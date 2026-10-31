@@ -35,7 +35,9 @@ const server=http.createServer((req,res)=>{
   await new Promise(r=>server.listen(0,'127.0.0.1',r));
   const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})});
   try{
-    const page=await browser.newPage({serviceWorkers:'block'}),requests=[],errors=[];
+    // Playwright's service-worker blocking init script throws inside sandboxed
+    // SVG preview frames. The app worker only intercepts same-origin assets.
+    const page=await browser.newPage(),requests=[],errors=[];
     page.on('pageerror',e=>errors.push(e.message));
     const lastPost=()=>requests.filter(r=>r.body).at(-1);
     let modelsAvailable=false;
