@@ -3,6 +3,18 @@
 <img src="docs/banner.jpg" alt="Top-Conf Figure Gallery banner" width="920">
 
 # 🎨 Top-Conf Figure Gallery
+
+### 本 fork：自定义 API / Custom API
+
+FigureForge 的服务商可选择 **自定义 OpenAI 兼容 / Custom**，填写自己的 API Key 和 Base URL（例如 `https://your-gateway.example/v1`，保留网关要求的路径，不加 `/chat/completions`）。
+
+- 解析模型、出图模型、视觉模型均可手填 ID；视觉模型用于位图模式的参考图分析和步骤四可编辑重建，需要支持图片输入。
+- 点击“刷新模型列表”查询网关的 `/models`；没有该接口时仍可使用手填 ID。手填解析/出图 ID 优先于下拉选择。
+- 解析、分析和重建使用 `/chat/completions`，生图使用兼容的图像接口；自定义生图会提交所选尺寸并核对实际返回图片，网关及模型仍需支持该请求格式。
+- 配置按服务商保存在本机浏览器。URL 和 Key 由各步骤共用；浏览器会将论文内容、参考图和请求发送到所选 API。
+- 不必部署服务器：在仓库目录运行 `python3 -m http.server 8000`，访问 `http://localhost:8000/forge/`。API 需允许浏览器来源的 CORS；静态托管本身不会解决 API 的跨域限制。
+
+本 fork 的工作流锁基线与引入的 upstream `187901c9` 及上述自定义接口改动对齐。
 ### 顶会论文主图灵感画廊 · ICLR · ICML · NeurIPS · CVPR · ACL · AAAI · 2023–2026
 
 ### 💖 寻求赞助与资源支持 · Sponsors welcome

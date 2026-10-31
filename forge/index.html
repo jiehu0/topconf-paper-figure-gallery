@@ -447,7 +447,7 @@
             <span class="blab" data-i18n="parseid"></span>
             <input type="text" id="parseCustomModel" data-i18n-ph="parseidPh">
           </div>
-          <label class="chkline" id="relayToggle" style="display:none !important"><input type="checkbox" id="useRelay"><span data-i18n="relay.label"></span></label>
+          <label class="chkline" id="relayToggle"><input type="checkbox" id="useRelay"><span data-i18n="relay.label"></span></label>
           <div id="relayRow" hidden style="margin-top:9px">
             <div class="bfield">
               <span class="blab" data-i18n="relay.preset"></span>
@@ -459,12 +459,16 @@
             </div>
             <div class="bfield" style="margin-top:9px">
             <span class="blab" data-i18n="relay.base"></span>
-            <input type="text" id="baseOverride" data-i18n-ph="relay.ph">
+            <input type="url" id="baseOverride" data-i18n-ph="relay.ph" aria-label="Base URL">
             </div>
           </div>
           <div class="bfield" id="customModelRow" hidden style="margin-top:9px">
             <span class="blab" data-i18n="customid"></span>
             <input type="text" id="customModel" data-i18n-ph="customidPh">
+          </div>
+          <div class="bfield" id="customVisionModelRow" hidden style="margin-top:9px">
+            <label class="blab" for="customVisionModel" data-i18n="visionid"></label>
+            <input type="text" id="customVisionModel" data-i18n-ph="visionidPh" style="min-width:0;flex:1">
           </div>
           <div class="corsnote" id="corsNote" hidden></div>
           <p class="bnote tiny" id="baseHint" hidden></p>
@@ -1237,7 +1241,7 @@ const TARGET_SECTION_HINTS = {
 };
 function parserModel(){
   const p=$('#provider').value, c=cfg();
-  if(p==='custom') return $('#parseCustomModel').value.trim();
+  if(p==='custom' && $('#parseCustomModel').value.trim()) return $('#parseCustomModel').value.trim();
   return $('#parseModel').value.trim() || (c.chat||[])[0] || (c.vision||[])[0] || '';
 }
 function parserInstruction(target, query){
@@ -1631,11 +1635,18 @@ function dataURIToParts(uri){
 function relayBase(){ return ($('#useRelay').checked || $('#provider').value==='custom') ? $('#baseOverride').value.trim() : ''; }
 function cfg(){
   const c=MAN.providers[$('#provider').value];
+  if($('#provider').value==='custom'){
+    const vision=$('#customVisionModel').value.trim();
+    return {...c,vision:vision?[vision]:[]};
+  }
   return relayBase() ? {...c,proto:'oai'} : c;
 }
 function baseURL(){
   const ov = relayBase();
   return (ov || cfg().base).replace(/\/+$/,'');
+}
+function generationModel(){
+  return ($('#provider').value==='custom' && $('#customModel').value.trim()) || $('#model').value;
 }
 const key_present = ()=>!!cleanKey($('#key').value);
 function fetchOnlineModels(){
@@ -1711,11 +1722,10 @@ $('#reconModel').onchange=e=>localStorage.setItem('ff_recon_model_'+$('#provider
 async function populateParserModels(){
   const p=$('#provider').value, c=cfg(), s=$('#parseModel'); s.innerHTML='';
   if(p==='custom'){
-    s.appendChild(option(tt('og.fillid'))); s.options[0].disabled=true;
+    s.appendChild(option('')); s.options[0].textContent=tt('og.fillid'); s.options[0].disabled=true;
     $('#parseCustomModelRow').hidden=false;
-    return;
   }
-  $('#parseCustomModelRow').hidden=true;
+  else $('#parseCustomModelRow').hidden=true;
   const models=[...(c.chat||[]),...(c.vision||[])];
   if(models.length){ const g=optgroup(tt('og.parser')); [...new Set(models)].forEach(m=>g.appendChild(option(m))); s.appendChild(g); }
   const requestBase=baseURL(), requestKey=cleanKey($('#key').value);
@@ -1725,6 +1735,7 @@ async function populateParserModels(){
   if(online.length){ const g=optgroup(tt('og.live')); [...new Set(online)].forEach(m=>g.appendChild(option(m))); s.appendChild(g); }
   const saved=localStorage.getItem('ff_parse_model_'+p);
   if(saved && [...s.options].some(o=>o.value===saved)) s.value=saved;
+  else if(p==='custom' && online.length) s.value=online[0];
   liveModels.parser = res.ok ? res.list : null;
   checkModelEnabled('#parseModel','#parseModelWarn',liveModels.parser);
 }
@@ -1751,7 +1762,8 @@ function initProviders(){
   // Register independently of the periodically refreshed upstream manifest.
   MAN.providers.infistar={label:'Infistar 无限星河',base:'https://infistar.cc/v1',proto:'oai',cors:true,chat:[],vision:[],image:[]};
   // Retire these providers even when a refreshed manifest still contains them.
-  for(const id of ['sf','claude','custom']) delete MAN.providers[id];
+  for(const id of ['sf','claude']) delete MAN.providers[id];
+  MAN.providers.custom={label:'自定义 OpenAI 兼容 / Custom',base:'',proto:'oai',cors:true,chat:[],vision:[],image:[]};
   const s = $('#provider');
   s.replaceChildren();
   for(const k of ['infistar',...Object.keys(MAN.providers).filter(k=>k!=='infistar')]){
@@ -1774,10 +1786,12 @@ function restoreProviderState(p){
   $('#baseOverride').value = localStorage.getItem('ff_base_'+p)||'';
   $('#customModel').value = localStorage.getItem('ff_cmodel_'+p)||'';
   $('#parseCustomModel').value = localStorage.getItem('ff_parse_cmodel_'+p)||'';
+  $('#customVisionModel').value = localStorage.getItem('ff_vision_cmodel_'+p)||'';
+  $('#customVisionModelRow').hidden = p!=='custom';
   const c = cfg();
   const needRelay = c.cors===false || p==='infistar';
-  $('#useRelay').checked = needRelay || localStorage.getItem('ff_relay_'+p)==='1';
-  $('#relayToggle').hidden = p==='infistar';
+  $('#useRelay').checked = p==='custom' || needRelay || localStorage.getItem('ff_relay_'+p)==='1';
+  $('#relayToggle').hidden = p==='infistar' || p==='custom';
   $('#relayRow').hidden = p==='infistar' || !$('#useRelay').checked;
   $('#customModelRow').hidden = p!=='custom';
   $('#corsNote').hidden = c.cors!==false;
@@ -1797,6 +1811,18 @@ $('#key').oninput = e=>{ e.target.value=cleanKey(e.target.value); localStorage.s
 $('#customModel').oninput = e=>localStorage.setItem('ff_cmodel_'+$('#provider').value, e.target.value);
 $('#parseModel').onchange = e=>localStorage.setItem('ff_parse_model_'+$('#provider').value,e.target.value);
 $('#parseCustomModel').oninput = e=>localStorage.setItem('ff_parse_cmodel_'+$('#provider').value,e.target.value);
+$('#customVisionModel').oninput = e=>{
+  const model=e.target.value.trim(), p=$('#provider').value;
+  localStorage.setItem('ff_vision_cmodel_'+p,model);
+  // Explicit model IDs also work when the gateway has no /models endpoint.
+  for(const id of ['analyzeModel','reconModel']){
+    const select=$('#'+id);
+    if(model && ![...select.options].some(o=>o.value===model)) select.appendChild(option(model));
+    select.value=model;
+  }
+  localStorage.setItem('ff_amodel_'+p,model);
+  localStorage.setItem('ff_recon_model_'+p,model);
+};
 $('#useRelay').onchange = e=>{
   $('#relayRow').hidden = !e.target.checked;
   localStorage.setItem('ff_relay_'+$('#provider').value, e.target.checked?'1':'0');
@@ -1848,7 +1874,7 @@ function syncImageRatioSupport(){
   for(const option of $('#imageResolution').options) option.disabled=false;
   warn.hidden=true;warn.textContent='';warn.classList.remove('audit-ok');
   if(mode!=='image') return;
-  const p=$('#provider').value,model=p==='custom'?$('#customModel').value.trim():$('#model').value;
+  const p=$('#provider').value,model=generationModel();
   if(!model) return;
   if(p==='nonelinear'){
     for(const option of $('#imageResolution').options){
@@ -2021,7 +2047,7 @@ async function analyzeReferences(){
     txt=await r.text(); if(!r.ok) throw new Error(friendlyHttp(r.status,txt));
     const d=JSON.parse(txt); txt=(d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
   }else{
-    const am = (mode==='image'&&passMode==='two') ? $('#analyzeModel').value : $('#model').value;
+    const am = (mode==='image'&&passMode==='two') ? $('#analyzeModel').value : generationModel();
     if(!am) throw new Error(tt('analyze.needmodel'));
     const parts=uris.map(u=>({type:'image_url',image_url:{url:u}}));
     parts.push({type:'text',text:buildAnalyzePrompt(ordered.length, ordered)});
@@ -2461,7 +2487,7 @@ $('#genBtn').onclick = async ()=>{
   if(t==='custom' && !$('#targetDesc').value.trim()){ showErr(tt('gen.custom')); return; }
   let base, model;
   if(p==='custom'){
-    base = $('#baseOverride').value.replace(/\/+$/,''); model=$('#customModel').value.trim();
+    base = baseURL(); model=generationModel();
     if(!base||!model){ showErr(tt('gen.base')); return; }
   }else{
     base = baseURL();

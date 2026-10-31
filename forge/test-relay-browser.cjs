@@ -39,7 +39,8 @@ const server = http.createServer((req,res)=>{
     assert.equal(await page.locator('#provider').inputValue(),'infistar');
     const providers=await page.locator('#provider option').evaluateAll(xs=>xs.map(x=>x.value));
     assert.equal(providers[0],'infistar');
-    for(const id of ['sf','claude','custom']) assert.ok(!providers.includes(id));
+    for(const id of ['sf','claude']) assert.ok(!providers.includes(id));
+    assert.ok(providers.includes('custom'));
     assert.equal(await page.locator('#relayToggle').isVisible(),false);
     assert.equal(await page.locator('#relayRow').isVisible(),false);
     assert.equal(await page.locator('#manifestHint').isVisible(),false);
