@@ -697,13 +697,13 @@
 </div>
 
 <script src="./i18n.js"></script>
-<script src="./i18n_forge.js?v=20261021-pdf-status"></script>
+<script src="./i18n_forge.js?v=20261031-svg-stream"></script>
 <script type="module">
 import {createRetrievalBoot,createSemanticWorker} from './retrieval-boot.mjs';
 import {fetchBitmapSource} from './nonelinear-source.mjs';
 import {fetchReconstructionStream,usesReconstructionStream} from './infistar-reconstruction-stream.mjs';
 import {prepareQuery,buildIndex,rank} from './retrieval.mjs';
-import {requestChat, pdfResponseJSON, pdfRepairBody} from './chat-api.mjs?v=20261021-unlimited';
+import {requestChat, requestSvgChat, pdfResponseJSON, pdfRepairBody} from './chat-api.mjs?v=20261031-svg-stream';
 import {usesInfistarGemini, geminiImageRequest, geminiImageResult, compatibleImageRequest, requestImageWithRecovery, imageFailureKind, fetchBufferedWithTimeout} from './image-api.mjs?v=20261026-nonelinear-resolution';
 import {ImageRoutes, safeImageFailover} from './image-routes.mjs?v=20261020';
 const imageRoutes=new ImageRoutes();
@@ -1681,7 +1681,9 @@ async function populateModels(){
   const p = $('#provider').value, c = cfg();
   const s = $('#model'); s.innerHTML='';
   if(p==='custom'){
-    s.appendChild(optgroup(tt('og.custom')));
+    const g=optgroup(tt('og.custom')), manual=$('#customModel').value.trim();
+    if(manual){const o=option(manual);o.dataset.manualModel='';g.appendChild(o);}
+    s.appendChild(g);
   }else if(mode==='svg'){
     if(c.chat.length){ const g=optgroup(tt('og.chat')); c.chat.forEach(m=>g.appendChild(option(m))); s.appendChild(g); }
     if(c.vision.length){ const g=optgroup(tt('og.vision')); c.vision.forEach(m=>g.appendChild(option(m))); s.appendChild(g); }
@@ -1703,6 +1705,7 @@ async function populateModels(){
   }
   const saved = localStorage.getItem('ff_model_'+p);
   if(saved && [...s.options].some(o=>o.value===saved)) s.value=saved;
+  if(p==='custom' && $('#customModel').value.trim()) s.value=$('#customModel').value.trim();
   liveModels.model = res.ok ? online : null;
   checkModelEnabled('#model','#modelWarn',liveModels.model);
   syncImageRatioSupport();
@@ -1808,7 +1811,12 @@ $('#provider').onchange = async e=>{
 };
 $('#key').oninput = e=>{ e.target.value=cleanKey(e.target.value); localStorage.setItem('ff_key_'+$('#provider').value, e.target.value); };
   $('#baseOverride').oninput = e=>{ localStorage.setItem('ff_base_'+$('#provider').value, e.target.value); syncRelayPreset(); syncBaseHint(); };
-$('#customModel').oninput = e=>localStorage.setItem('ff_cmodel_'+$('#provider').value, e.target.value);
+$('#customModel').oninput = e=>{
+  localStorage.setItem('ff_cmodel_'+$('#provider').value,e.target.value);
+  const select=$('#model'), model=e.target.value.trim();
+  select.querySelector('[data-manual-model]')?.remove();
+  if(model){const o=option(model);o.dataset.manualModel='';select.prepend(o);select.value=model;}
+};
 $('#parseModel').onchange = e=>localStorage.setItem('ff_parse_model_'+$('#provider').value,e.target.value);
 $('#parseCustomModel').oninput = e=>localStorage.setItem('ff_parse_cmodel_'+$('#provider').value,e.target.value);
 $('#customVisionModel').oninput = e=>{
@@ -2394,6 +2402,11 @@ function postJSON(base, path, body, key, extraHeaders, timeoutMs=Infinity){
     headers:{'Content-Type':'application/json',Authorization:'Bearer '+key,...extraHeaders},
     body:JSON.stringify(body)},timeoutMs);
 }
+function postSvgJSON(base,body,key,provider){
+  return requestSvgChat(base+'/chat/completions',{method:'POST',
+    headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},
+    body:JSON.stringify(body)},provider==='custom');
+}
 function fetchWithTimeout(url, options={}, timeoutMs=Infinity){
   return fetchBufferedWithTimeout(url,options,timeoutMs);
 }
@@ -2547,11 +2560,11 @@ async function genOaiSVG(base,model,key,content,p,refIds,layoutGuide){
     body.messages=[{role:'system',content:SVG_SYS},{role:'user',content:prompt}];
   }
   let r;
-  try{ r = await postJSON(base,'/chat/completions',body,key); }
+  try{ r = await postSvgJSON(base,body,key,p); }
   catch(e){
     if(e.name==='TimeoutError') throw new Error(tt('svg.timeout'));
     const diag=await diagnoseConnection(base,key,model);
-    throw new Error(diag || tt('svg.blocked'));
+    throw new Error(diag || (tt('svg.blocked')+apiContext()));
   }
   let txt = await r.text();
   // Preserve references on provider failures; never silently switch to text-only.
@@ -2762,7 +2775,7 @@ Return the complete corrected SVG only, no explanation, no code fences. Start wi
   const body = {model, temperature:0.1, max_tokens:96000,
     messages:[{role:'system',content:SVG_SYS},{role:'user',content:svgText+'\n\n'+instruction}]};
   if(provider==='ark') body.thinking={type:'disabled'};
-  const r = await postJSON(base,'/chat/completions',body,key);
+  const r = await postSvgJSON(base,body,key,provider);
   const txt = await r.text();
   if(!r.ok) throw new Error(friendlyHttp(r.status, txt));
   const d = JSON.parse(txt);

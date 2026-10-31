@@ -1,4 +1,13 @@
 import {fetchBufferedWithTimeout} from './image-api.mjs';
+import {fetchReconstructionStream} from './infistar-reconstruction-stream.mjs';
+
+// Custom gateways can time out while buffering a long SVG. Consume SSE into
+// the same Chat Completions response shape; never retry an interrupted stream.
+export async function requestSvgChat(url,options,stream=false,fetchImpl=fetch){
+  if(!stream) return requestChat(url,options,Infinity,fetchImpl);
+  const result=await fetchReconstructionStream(url,options,Infinity,fetchImpl);
+  return new Response(result.text,{status:result.status,headers:{'Content-Type':'application/json'}});
+}
 
 // Retry only explicit transient HTTP failures, preserving images and settings.
 // One wall-clock budget includes both responses and backoff.

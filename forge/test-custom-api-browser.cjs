@@ -15,7 +15,7 @@ const server=http.createServer((req,res)=>{
     if(err){res.writeHead(404);return res.end();}
     if(pathname==='/forge/index.html')data=Buffer.from(data.toString().replace(/\r\n/g,'\n')
       .replace('window.__ffReconstruct = () => runReconstruction();',`window.__customTest={
-        parse:callPdfParser,analyze:analyzeReferences,image:genOaiImage,scene:requestEditableScene,
+        parse:callPdfParser,analyze:analyzeReferences,image:genOaiImage,scene:requestEditableScene,svg:genOaiSVG,repair:repairSVG,
         model:generationModel,parser:parserModel,base:baseURL,
         seed(){
           pdfContext={fileName:'fixture.pdf',dataUri:'data:application/pdf;base64,PDF_FIXTURE'};
@@ -23,6 +23,7 @@ const server=http.createServer((req,res)=>{
           data={figs,ids:figs.map(f=>f.id),N:4}; refs=new Set(data.ids);
           refDataURIs=async()=>Array(4).fill('data:image/png;base64,PIXEL_FIXTURE');
           runReconstruction=async()=>null;
+          auditAndRepair=async svg=>({svg,audit:{defects:[]},first:0});
         }
       };`)
       .replace("onBootState(bootStatus);\nawait loadManifest();\ninitProviders();\nsyncSubCount();\nconst startupModels=Promise.all([populateModels(), populateParserModels()]);\nawait boot();\nawait startupModels;\n$('#manifestHint').textContent = tt('manifest.hint',{d:MAN.updated});",
@@ -41,6 +42,10 @@ const server=http.createServer((req,res)=>{
     await page.route('https://gateway.invalid/**',async route=>{
       const req=route.request();requests.push({url:req.url(),headers:req.headers(),body:req.method()==='POST'?req.postDataJSON():null});
       if(req.url().endsWith('/models'))return route.fulfill({status:modelsAvailable?200:404,json:modelsAvailable?{data:[{id:'account-parser'},{id:'gpt-image-2'}]}:{error:'No catalog'}});
+      if(req.postDataJSON()?.stream){
+        const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900"><rect x="10" y="10" width="300" height="100" fill="#ddd"/></svg>';
+        return route.fulfill({contentType:'text/event-stream',body:'data: '+JSON.stringify({choices:[{index:0,delta:{content:svg},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n'});
+      }
       const content={selectedSections:[{section:'Method',summary:'Fixture method.'}],representative:[1,2],refinedPrompt:'A structured framework.',nodes:[{id:'box',type:'rect',x:10,y:10,w:40,h:40,fill:'#ffffff'}]};
       return route.fulfill({json:{choices:[{message:{content:JSON.stringify(content)}}]}});
     });
@@ -53,11 +58,21 @@ const server=http.createServer((req,res)=>{
     await page.fill('#key','fixture-key');
     await page.fill('#parseCustomModel','my-parser');
     await page.fill('#customModel','my-painter');
+    assert.equal(await page.locator('#model').inputValue(),'my-painter');
     await page.fill('#customVisionModel','my-vision-alias');
     await page.click('#refreshModels');
     assert.equal(await page.evaluate(()=>window.__customTest.base()),'https://gateway.invalid/api/v1');
     // An unavailable /models must never gate manual model IDs.
     assert.equal(await page.locator('#reconModel').inputValue(),'my-vision-alias');
+    await page.evaluate(()=>window.__customTest.seed());
+    await page.evaluate(()=>window.__customTest.svg(window.__customTest.base(),window.__customTest.model(),'fixture-key','Draw the method','custom',undefined,''));
+    assert.equal(lastPost().body.stream,true);
+    assert.equal(lastPost().body.model,'my-painter');
+    assert.equal(lastPost().body.messages[1].content.filter(p=>p.type==='image_url').length,4);
+    assert.equal(await page.locator('#out iframe').count(),1);
+    await page.evaluate(()=>window.__customTest.repair('<svg/>',[{detail:'Move one label',fix:'Shift right'}],{base:window.__customTest.base(),model:window.__customTest.model(),key:'fixture-key',provider:'custom'}));
+    assert.equal(lastPost().body.stream,true);
+    assert.equal(lastPost().body.max_tokens,96000);
     await page.click('[data-mode="image"]');
     await page.evaluate(()=>window.__customTest.seed());
     assert.equal(await page.locator('#analyzeModel').inputValue(),'my-vision-alias');
@@ -94,7 +109,7 @@ const server=http.createServer((req,res)=>{
     await page.fill('#parseCustomModel','my-parser');
     await page.reload();
     await page.waitForFunction(()=>!!window.__customTest);
-    for(const [id,value] of [['provider','custom'],['key','fixture-key'],['baseOverride','https://gateway.invalid/api/v1///'],['parseCustomModel','my-parser'],['customModel','my-painter'],['customVisionModel','my-vision-alias'],['reconModel','my-vision-alias']])assert.equal(await page.locator('#'+id).inputValue(),value);
+    for(const [id,value] of [['provider','custom'],['key','fixture-key'],['baseOverride','https://gateway.invalid/api/v1///'],['parseCustomModel','my-parser'],['customModel','my-painter'],['model','my-painter'],['customVisionModel','my-vision-alias'],['reconModel','my-vision-alias']])assert.equal(await page.locator('#'+id).inputValue(),value);
     await page.selectOption('#provider','oai');
     assert.equal(await page.locator('#key').inputValue(),'');
     assert.equal(await page.locator('#relayToggle').isVisible(),true);
