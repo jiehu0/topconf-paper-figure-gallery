@@ -29,7 +29,7 @@ export function validateSubmission(value){
   if(!value.body||typeof value.body!=='object'||Array.isArray(value.body))throw Error('INVALID_IMAGE_REQUEST');
   let body;try{body=unpackImageBody(value.body);}catch{throw Error('INVALID_MULTIPART');}
   const form=body instanceof FormData,native=target.pathname.includes('/models/');
-  if(form&&(!Array.isArray(value.body.multipart)||value.body.multipart.length>50||target.hostname!=='api.openai.com'||!target.pathname.endsWith('/edits')))throw Error('INVALID_MULTIPART');
+  if(form&&(!Array.isArray(value.body.multipart)||value.body.multipart.length>50||!['oai','custom'].includes(imageJobRoute(target.href))||!target.pathname.endsWith('/edits')))throw Error('INVALID_MULTIPART');
   const model=form?body.get('model'):native?decodeURIComponent(target.pathname.split('/models/')[1].split(':')[0]):body.model;
   const prompt=form?body.get('prompt'):native?body.contents?.[0]?.parts?.find(p=>typeof p.text==='string')?.text:body.prompt;
   if(!/^[a-z0-9][a-z0-9._-]{0,160}$/i.test(model||'')||typeof prompt!=='string'||!prompt.trim())throw Error('INVALID_IMAGE_REQUEST');
@@ -87,7 +87,7 @@ export class ImageJob {
       let result=JSON.parse(await getText(this.storage,'result:',meta.resultCount));
       // Retrying this GET may retry an image URL download, never generation.
       if(result.downloadError){
-        result=await preserveImageResult(result);
+        result=await preserveImageResult(result,this.env.IMAGE_FETCH||fetch);
         if(!result.downloadError)await this.storage.transaction(async storage=>{const resultCount=await putText(storage,'result:',JSON.stringify(result));for(let i=resultCount;i<meta.resultCount;i++)await storage.delete('result:'+i);await storage.put('meta',{...meta,resultCount,error:result.resultError||null,state:result.ok?'succeeded':'rejected'});});
       }
       return json(result);
@@ -122,7 +122,7 @@ export class ImageJob {
     try{
       input=JSON.parse(await getText(this.storage,'input:',meta.inputCount));
       target=backgroundTarget(input.url);
-      if(usesBrowserImageTransport(target))browser=await openBrowserImageFetch(this.env.BROWSER,target,{timeoutMs:EXECUTION});
+      if(usesBrowserImageTransport(target)&&!this.env.DIRECT_IMAGE_FETCH)browser=await openBrowserImageFetch(this.env.BROWSER,target,{timeoutMs:EXECUTION});
     }catch{
       // No generation was submitted. Capacity/navigation failures can safely
       // wait in the same queue with the same UUID and encrypted input.
@@ -135,7 +135,7 @@ export class ImageJob {
     await this.storage.put('meta',meta); // Durable claim BEFORE the only POST.
     try{
       const key=await decrypt(this.env.JOB_ENCRYPTION_KEY,meta.encrypted);
-      const raw=await requestStep3ImageStream({...input,url:target,body:unpackImageBody(input.body),key,timeoutMs:EXECUTION,fetchImpl:browser?browser.fetch:protocolFetch()});
+      const raw=await requestStep3ImageStream({...input,url:target,body:unpackImageBody(input.body),key,timeoutMs:EXECUTION,fetchImpl:browser?browser.fetch:protocolFetch(this.env.IMAGE_FETCH||fetch)});
       raw.backgroundTarget=target;
       // Scrub the actual key even if an upstream error echoes the credential.
       const safe=JSON.stringify(raw).split(key).join('[redacted]').replace(/Bearer\s+[^"\s]+/gi,'Bearer [redacted]');
@@ -156,7 +156,7 @@ export class ImageJob {
     await this.storage.setAlarm(meta.expires);
   }
   async finish(meta,raw){
-    const result=await preserveImageResult(raw);
+    const result=await preserveImageResult(raw,this.env.IMAGE_FETCH||fetch);
     // A gateway 5xx does not prove that generation was never accepted. Keep the
     // task unresolved and block automatic replacement instead of calling it a
     // definite rejection. Its received response remains stored for diagnosis.

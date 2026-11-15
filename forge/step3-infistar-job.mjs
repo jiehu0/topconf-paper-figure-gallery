@@ -1,7 +1,22 @@
 // Step 3 only. Short, repeatable queries replace the browser's long image POST.
 import {imageJobRoute,packImageBody,imageResultItem} from './step3-image-protocol.mjs';
-export const INFISTAR_JOBS='https://gallery-infistar-image-jobs.lixiao-gallery.workers.dev';
+export const INFISTAR_JOBS=globalThis.FF_IMAGE_JOBS_BASE||'/api/image-jobs';
 const PREFIX='figureforge:infistar-image-job:v1:';
+export function archiveBlockedLegacyJobs(storage,approved=false){
+  if(!approved)return 0;
+  const keys=Array.from({length:storage.length},(_,i)=>storage.key(i));let count=0;
+  for(const name of keys){
+    if(!name?.startsWith(PREFIX)||name.endsWith(':saved'))continue;
+    try{
+      const text=storage.getItem(name),record=JSON.parse(text);
+      if(!record?.id||record.endpoint||record.acknowledged||record.saved)continue;
+      const archived='figureforge:blocked-legacy-image-job:v1:'+name.slice(PREFIX.length);
+      storage.setItem(archived,text);
+      if(storage.getItem(archived)===text){storage.removeItem(name);count++;}
+    }catch{} // Never discard a record when archival storage is unavailable.
+  }
+  return count;
+}
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function hash(text){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)))].map(x=>x.toString(16).padStart(2,'0')).join('');}
 // Keep the existing export name for saved clients; the allowlist now covers
@@ -9,6 +24,7 @@ async function hash(text){return [...new Uint8Array(await crypto.subtle.digest('
 export function usesInfistarImageJob(url){return !!imageJobRoute(url);}
 function jobError(code,id){
   const messages={JOB_PENDING_DIFFERENT_INPUT:'上次生图任务尚未取回，已阻止新建任务以避免重复扣费。请先点击“取回上次图片”。',JOB_RESULT_UNKNOWN:'后台未能确认上游任务结果，已停止自动提交，避免重复扣费。请凭任务编号核查，不要直接重新生图。',JOB_EXPIRED:'此任务的图片保存期已结束（24 小时）。旧任务不会被重新提交。',JOB_CONNECTION:'任务记录已保留。连接恢复后点击“取回上次图片”，或保持原参数再次生成，将查询同一任务，不会重新生图。',JOB_STORAGE:'无法保存任务记录，已停止提交。请允许此站点使用本地存储。'};
+  messages.JOB_BACKEND_CHANGED='这条任务属于更新前的后台，已阻止向新后台重新提交。请先核查原任务结果，避免重复生图。';
   return Object.assign(new Error((messages[code]||code)+(id?' [task: '+id+']':'')),{code,jobId:id});
 }
 export function createInfistarJobClient({fetchImpl=globalThis.fetch.bind(globalThis),storage=globalThis.localStorage,endpoint=INFISTAR_JOBS,wait=sleep,pollMs=1500,deadlineMs=15*60*1000,withLock=async(name,fn)=>{
@@ -62,9 +78,10 @@ export function createInfistarJobClient({fetchImpl=globalThis.fetch.bind(globalT
       const name=await slot(key),submission={url,body:await packImageBody(body),usedReferences},fingerprint=await hash(JSON.stringify(submission));
       const record=await withLock(name,async()=>{
         let record=read(name);
+        if(record&&((record.endpoint&&record.endpoint!==endpoint)||(!record.endpoint&&record.acknowledged)))throw jobError('JOB_BACKEND_CHANGED',record.id);
         if(record&&record.fingerprint!==fingerprint)throw jobError('JOB_PENDING_DIFFERENT_INPUT',record.id);
         if(record)record.recovered=true;
-        else {record={id:crypto.randomUUID(),fingerprint,created:Date.now(),acknowledged:false};save(name,record);}
+        else {record={id:crypto.randomUUID(),fingerprint,created:Date.now(),acknowledged:false,endpoint};save(name,record);}
         return record;
       });
       return track(record,key,{submission,onProgress});
@@ -116,6 +133,7 @@ function installRecovery(){
   };
 }
 if(typeof document!=='undefined'){
+  try{archiveBlockedLegacyJobs(localStorage,globalThis.FF_ARCHIVE_BLOCKED_IMAGE_JOBS===true);}catch{}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installRecovery,{once:true});else installRecovery();
   globalThis.addEventListener('storage',installRecovery);
 }

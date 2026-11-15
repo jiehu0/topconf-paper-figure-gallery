@@ -1,10 +1,11 @@
 // Private Step 3 adapters; shared Step 4 protocol modules stay unchanged.
-export function imageJobRoute(url){
+export function imageJobRoute(url,extraHosts=globalThis.FF_IMAGE_JOB_HOSTS||[]){
   try{
     const u=new URL(url);if(u.protocol!=='https:'||u.port||u.username||u.password||u.hash)return null;
     if(['infistar.cc','www.infistar.cc','infistar.ai','www.infistar.ai'].includes(u.hostname)&&((u.pathname==='/v1/images/generations'&&!u.search)||(/^\/v1beta\/models\/[^/]+:(?:streamGenerateContent|generateContent)$/.test(u.pathname)&&(!u.search||u.search==='?alt=sse'))))return 'infistar';
     if(['api.nonelinear.com.cn','gallery-nonelinear-relay.lixiao-gallery.workers.dev'].includes(u.hostname)&&u.pathname==='/v1/images/generations'&&!u.search)return 'nonelinear';
     if(u.hostname==='api.openai.com'&&/^\/v1\/images\/(generations|edits)$/.test(u.pathname)&&!u.search)return 'oai';
+    if(extraHosts.includes(u.hostname)&&/^\/v1\/images\/(generations|edits)$/.test(u.pathname)&&!u.search)return 'custom';
   }catch{}return null;
 }
 function bytes64(bytes){let result='';for(let i=0;i<bytes.length;i+=16384)result+=String.fromCharCode(...bytes.subarray(i,i+16384));return btoa(result);}

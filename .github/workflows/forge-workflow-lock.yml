@@ -13,3 +13,11 @@ jobs:
         with:
           node-version: '20'
       - run: node scripts/check-forge-workflow-lock.mjs
+  image-jobs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test image-jobs-server/test-server.mjs forge/test-step3-infistar-job.mjs forge/test-step3-image-protocol.mjs infistar-image-relay/test-worker.mjs infistar-image-relay/test-image-result.mjs

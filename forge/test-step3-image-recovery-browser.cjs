@@ -11,8 +11,8 @@ const {chromium}=require(process.env.REVISION_PLAYWRIGHT||'C:/Users/黎枭/.cach
   const page=await browser.newPage({serviceWorkers:'block'});
   await page.route('**/*',async route=>{
    const req=route.request(),url=new URL(req.url());
-   if(url.hostname==='gallery-infistar-image-jobs.lixiao-gallery.workers.dev'){
-    const id=url.pathname.split('/')[2];
+   if(url.origin===origin&&url.pathname.startsWith('/api/image-jobs/jobs/')){
+    const id=url.pathname.split('/jobs/')[1].split('/')[0];
     if(req.method()==='PUT'){puts++;assert.equal(req.headers().authorization,'Bearer offline-recovery-key');return route.fulfill({json:{id,state:'succeeded'}});}
     gets++;
     return route.fulfill({json:url.pathname.endsWith('/result')?{ok:true,status:200,text:JSON.stringify({data:[{b64_json:image,mimeType:'image/png'}]}),usedReferences:false,requestId:'offline-request'}:{id,state:'succeeded'}});
