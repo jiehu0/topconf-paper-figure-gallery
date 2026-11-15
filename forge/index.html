@@ -228,6 +228,17 @@
   .bnote .warn-txt{color:#dc2626;font-weight:700}
   .infistar-signup{margin:0 0 10px;padding-left:95px;font-size:12px}
   .infistar-signup a{color:#6d28d9;font-weight:700;text-decoration:underline;text-underline-offset:2px}
+  .nonelinear-links{display:inline-flex;align-items:center;gap:14px;min-height:28px}
+  .nonelinear-links a{white-space:nowrap}
+  .nonelinear-divider{height:14px;border-left:1px solid #a78bfa}
+  .nonelinear-offer{display:block;margin-top:2px;line-height:1.6}
+  .nonelinear-support{margin:auto;border:0;border-radius:16px;padding:20px;width:min(400px,calc(100vw - 32px));max-height:90vh;overflow:auto;box-shadow:0 16px 64px #0004}
+  .nonelinear-support::backdrop{background:#11182788}
+  .nonelinear-support header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px}
+  .nonelinear-support h2{font-size:18px}
+  .nonelinear-support button{border:0;background:transparent;font-size:26px;line-height:1;cursor:pointer;padding:4px 8px;color:#6b7280}
+  .nonelinear-support img{display:block;width:100%;height:auto}
+  .nonelinear-support p{margin-top:12px;text-align:center;font-size:12px;color:#6b7280}
   .box .chkline{margin-top:9px}
   .box .corsnote{margin-top:9px}
   .btn-sm{padding:7px 12px;font-size:12.5px;white-space:nowrap}
@@ -362,6 +373,7 @@
 #analyzeModel{flex:1;max-width:none;min-width:0}
 #figureRatio:focus-visible,#imageResolution:focus-visible,#analyzeModel:focus-visible,#reconModel:focus-visible,#reconReasoningEffort:focus-visible{outline:3px solid #c4b5fd;outline-offset:2px;border-color:#7c3aed}
 </style>
+  <script defer src="../assets/analytics.js?v=20261102"></script>
 </head>
 <body>
 <div class="wrap">
@@ -417,6 +429,7 @@
             <span class="blab" data-i18n="src.query"></span>
             <input type="text" id="contentQuery" data-i18n-ph="src.queryPh">
           </div>
+          <button type="button" class="btn-ghost btn-sm" id="parsePdfBtn" hidden disabled>按当前描述重新解析（调用模型）</button>
           <div class="status-line" id="contentModeHint" data-state="idle" data-i18n-title="hint.label" role="status" aria-live="polite"></div>
           <div class="meta-line warn" id="pdfExtractionMeta" data-i18n="meta.nopdf"></div>
           <p class="bnote err" id="parseErr" hidden></p>
@@ -431,6 +444,7 @@
             <select id="provider"></select>
           </div>
           <p class="bnote infistar-signup" id="infistarSignup"><a href="https://www.infistar.cc/register?aff=RZ4MDTRU&amp;ref_source=link" target="_blank" rel="noopener noreferrer sponsored" data-i18n="infistar.signup"></a></p>
+          <p class="bnote infistar-signup" id="nonelinearSignup" hidden><span class="nonelinear-links"><a href="./assets/nonelinear-wechat.png" id="nonelinearSupportOpen" aria-haspopup="dialog" aria-controls="nonelinearSupportDialog">扫码添加客服</a><span class="nonelinear-divider" aria-hidden="true"></span><a href="https://nonelinear.com.cn/static/models.html" target="_blank" rel="noopener noreferrer sponsored">访问官网 ↗</a></span><span class="nonelinear-offer">报暗号【灵感画廊】立领 20 元体验金，畅享最新模型</span></p>
           <div class="bfield">
             <span class="blab">API Key</span>
             <input type="password" id="key" data-i18n-ph="keyPh">
@@ -443,6 +457,7 @@
           <div class="bfield"><span class="blab">解析推理强度</span><select id="parseReasoningEffort" aria-label="解析推理强度"><option value="">服务商默认</option><option value="medium">中</option><option value="high">高</option><option value="xhigh">极高</option></select></div>
           <p class="bnote">默认不指定强度；其他档位需模型及服务商支持，可能增加耗时与费用。</p>
           <p class="bnote warn-inline" id="parseModelWarn" hidden></p>
+          <p class="bnote" id="parserCatalogStatus" role="status" aria-live="polite"></p>
           <div class="bfield" id="parseCustomModelRow" hidden>
             <span class="blab" data-i18n="parseid"></span>
             <input type="text" id="parseCustomModel" data-i18n-ph="parseidPh">
@@ -579,6 +594,7 @@
       <div class="bfield" id="imageDimensionsRow" hidden style="margin-top:9px"><span class="blab" data-i18n="img.ratio"></span><select id="figureRatio"><option value="16:9" selected>16:9</option><option value="3:2">3:2</option><option value="4:3">4:3</option><option value="1:1">1:1</option></select><span class="blab" data-i18n="img.resolution"></span><select id="imageResolution"><option value="1K">1K</option><option value="2K" selected>2K</option><option value="4K">4K</option></select></div>
       <p class="bnote warn-inline" id="imageRatioWarn" hidden></p>
       <p class="bnote warn-inline" id="modelWarn" hidden></p>
+      <p class="bnote" id="step3CatalogStatus" role="status" aria-live="polite"></p>
       <p class="bnote" id="pdfModelHint" data-i18n="hint.model"></p>
       <div class="bfield" id="analyzeModelRow" hidden style="margin-top:9px"><span class="blab" data-i18n="analyzemodel"></span><select id="analyzeModel"></select></div>
       <div class="bfield" style="margin-top:9px"><span class="blab">视觉推理强度</span><select id="visualReasoningEffort" aria-label="视觉推理强度"><option value="">服务商默认</option><option value="medium">中</option><option value="high">高</option><option value="xhigh">极高</option></select></div>
@@ -696,15 +712,47 @@
   <button class="forge-lb-nav next" id="forgeLbNext" data-i18n-aria="lb.next">›</button>
 </div>
 
+<dialog id="nonelinearSupportDialog" class="nonelinear-support" aria-labelledby="nonelinearSupportTitle">
+  <header><h2 id="nonelinearSupportTitle">扫描客服微信</h2><button type="button" id="nonelinearSupportClose" aria-label="关闭客服二维码">×</button></header>
+  <img src="./assets/nonelinear-wechat.png" alt="非线智能客服微信二维码" loading="lazy" width="523" height="693">
+  <p>添加客服后报暗号【灵感画廊】，领取 20 元体验金。</p>
+</dialog>
+<script>
+{
+  const supportDialog = document.getElementById('nonelinearSupportDialog');
+  document.getElementById('nonelinearSupportOpen').addEventListener('click', event => {
+    event.preventDefault();
+    supportDialog.showModal();
+  });
+  document.getElementById('nonelinearSupportClose').addEventListener('click', () => supportDialog.close());
+  supportDialog.addEventListener('click', event => {
+    if (event.target !== supportDialog) return;
+    const bounds = supportDialog.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) supportDialog.close();
+  });
+}
+</script>
 <script src="./i18n.js"></script>
-<script src="./i18n_forge.js?v=20261031-svg-stream"></script>
+<script src="./i18n_forge.js?v=20261115-upstream-sync"></script>
 <script type="module">
+import {createParserModelCatalog} from './parser-model-catalog.mjs?v=20261114';
+import {createStep3ModelCatalog} from './step3-model-catalog.mjs?v=20261114';
 import {createRetrievalBoot,createSemanticWorker} from './retrieval-boot.mjs';
-import {fetchBitmapSource} from './nonelinear-source.mjs';
-import {fetchReconstructionStream,usesReconstructionStream} from './infistar-reconstruction-stream.mjs';
+import {readBitmapSource} from './nonelinear-source.mjs';
+import {fetchReconstructionStream,usesReconstructionStream} from './infistar-reconstruction-stream.mjs?v=20261114-errors';
+import {fetchReconstructionResponses,usesReconstructionResponses} from './infistar-reconstruction-responses.mjs?v=20261114-errors';
 import {prepareQuery,buildIndex,rank} from './retrieval.mjs';
-import {requestChat, requestSvgChat, pdfResponseJSON, pdfRepairBody} from './chat-api.mjs?v=20261031-svg-stream';
+import {requestChat, requestSvgChat, pdfResponseJSON, pdfRepairBody} from './chat-api.mjs?v=20261115-upstream-sync';
 import {usesInfistarGemini, geminiImageRequest, geminiImageResult, compatibleImageRequest, requestImageWithRecovery, imageFailureKind, fetchBufferedWithTimeout} from './image-api.mjs?v=20261026-nonelinear-resolution';
+import {requestStep3ImageStream} from './step3-image-stream.mjs?v=20261114-errors';
+import {step3ImageResolutions,assertStep3ImageResolution,step3ImageDimensions,step3NativePixelsMatch} from './step3-image-capabilities.mjs?v=20261114-model-resolution';
+import {usesInfistarImageJob,requestInfistarImageJob,acknowledgeInfistarImageJob,showInfistarJobProgress} from './step3-infistar-job.mjs?v=20261114-durable-jobs';
+import {prepareStep3ImageBody,protocolFetch,imageResultItem} from './step3-image-protocol.mjs?v=20261114-protocol';
+import {step3ReferenceInputs} from './step3-reference-input.mjs?v=20261114-errors';
+import {createRevisionGallery,generateRevision} from './revision-gallery.mjs?v=20261114-layout';
+import {svgChatResponse} from './svg-chat-response.mjs?v=20261112';
+import {requestStep3Svg} from './step3-svg-request.mjs?v=20261112-svg-recovery';
+import {svgVersion,generateSVGRevision} from './svg-revision.mjs?v=20261112';
 import {ImageRoutes, safeImageFailover} from './image-routes.mjs?v=20261020';
 const imageRoutes=new ImageRoutes();
 import {buildNativePptx, readNativePptxScene, geometrySegments, editableShapeFrame, expandEditableTextPaths, parseEditablePath, transformEditablePath} from './editable-native.mjs?v=whole-image-20261021-1';
@@ -1232,6 +1280,9 @@ $('#targetDesc').oninput = ()=>localStorage.setItem('ff_target_desc', $('#target
 /* ---------------- PDF parsing (model-first; no PDF.js semantic fallback) ---------------- */
 let pdfContext = null;
 let pdfIntentSeq = 0;
+let pdfParseBusy = false;
+let pdfUploadBusy = false;
+let pdfParseDirty = false;
 const TARGET_SECTION_HINTS = {
   overview:'研究问题、核心方法、主要贡献、主要结果与应用价值',
   architecture:'模型模块、编码器/解码器、组件连接关系、数据流与张量或输入输出',
@@ -1385,7 +1436,17 @@ function anthropicHeaders(key){
 function reasoningEffort(scope){
   return $(scope==='parse'?'#parseReasoningEffort':scope==='recon'?'#reconReasoningEffort':'#visualReasoningEffort').value;
 }
+function normalizeChatTokenLimit(body){
+  // Chat Completions token limits are independent of the reasoning selector.
+  // Keep native Anthropic and Responses payloads in their own formats.
+  if(body.system || body.input!==undefined || !/^(gpt-|chatgpt-|o[134](?:-|$))/i.test(body.model) || !Object.hasOwn(body,'max_tokens')) return body;
+  const result={...body};
+  if(result.max_completion_tokens==null) result.max_completion_tokens=result.max_tokens;
+  delete result.max_tokens;
+  return result;
+}
 function withReasoning(body,scope){
+  body=normalizeChatTokenLimit(body);
   const effort=reasoningEffort(scope);
   if(!effort) return body;
   if(!['medium','high','xhigh'].includes(effort)) throw new Error('HTTP 400: 无效的推理强度');
@@ -1396,10 +1457,6 @@ function withReasoning(body,scope){
   delete result.temperature;
   delete result.top_p;
   delete result.thinking;
-  if(!body.input && /^(gpt-|o[134](?:-|$))/i.test(body.model) && body.max_tokens){
-    result.max_completion_tokens=body.max_tokens;
-    delete result.max_tokens;
-  }
   return result;
 }
 for(const [id,key] of [['parseReasoningEffort','ff_parse_reasoning_effort'],['visualReasoningEffort','ff_visual_reasoning_effort']]){
@@ -1493,9 +1550,34 @@ function setParseStatus(state){
   const el=$('#contentModeHint'); el.dataset.state=state;
   el.dataset.label={idle:tt('hint.label'),loading:tt('ps.loading'),success:tt('ps.success'),error:tt('ps.error')}[state];
 }
+// Step 1 only: edits invalidate pending results without submitting model work.
+function syncPdfParseButton(){
+  const btn=$('#parsePdfBtn'), busy=pdfParseBusy||pdfUploadBusy;
+  btn.hidden=!pdfContext || $('#contentMode').value==='free';
+  btn.disabled=busy || btn.hidden;
+  btn.setAttribute('aria-busy',String(busy));
+  btn.textContent=busy?refsText('解析中…','Parsing…'):refsText('按当前描述重新解析（调用模型）','Reparse current description (calls model)');
+  $('#uploadBtn').disabled=busy;
+  if(pdfParseDirty && pdfContext && $('#contentMode').value!=='free'){
+    setParseStatus('idle');
+    $('#contentModeHint').textContent=busy
+      ?refsText('描述已修改；当前解析结束后请点击重新解析，不会自动提交。','Description changed. Reparse after the current request finishes; no automatic submission.')
+      :refsText('描述已修改，尚未重新解析；点击重新解析会调用模型。','Description changed. Click Reparse to call the model.');
+  }
+}
+function markPdfParseDirty(){
+  ++pdfIntentSeq;
+  pdfParseDirty=!!pdfContext && $('#contentMode').value!=='free';
+  clearParseErr();
+  syncPdfParseButton();
+}
 async function selectPdfContext(){
-  if(!pdfContext || $('#contentMode').value==='free') return;
+  if(pdfParseBusy || !pdfContext || $('#contentMode').value==='free') return;
+  pdfParseBusy=true;
+  pdfParseDirty=false;
   const seq=++pdfIntentSeq;
+  try{
+  syncPdfParseButton();
   const setHint = (key,vars)=>{ setParseStatus('loading'); $('#contentModeHint').textContent=tt(key,vars||{}); };
   clearParseErr();
   setHint('ps.sending');
@@ -1507,7 +1589,6 @@ async function selectPdfContext(){
   order.push('text');
   if(modelSeesImages()) order.push('img');
   const failures=[];
-  try{
     let result=null, used=null;
     for(const ch of order){
       if(seq!==pdfIntentSeq) return;
@@ -1526,6 +1607,7 @@ async function selectPdfContext(){
           setExtractMetaKey('ps.meta1c', {m:parserModel()||'–'}, false);
           payload = await extractPdfImages();
         }
+        if(seq!==pdfIntentSeq) return;
         result = await callPdfParser(ch, payload);
         used = ch;
         break;
@@ -1552,21 +1634,28 @@ async function selectPdfContext(){
     setExtractMetaKey('ps.meta3', null, true);
     showParseErr(err.message);
     showErr(tt('err.pdfparse',{m:err.message}));
+  }finally{
+    pdfParseBusy=false;
+    syncPdfParseButton();
   }
 }
-function syncContentMode(reparse=true){
+function syncContentMode(){
   const mode=$('#contentMode').value; $('#contentQueryRow').hidden=mode!=='custom';
   setParseStatus('idle');
   $('#contentModeHint').textContent=contentModeText(mode);
-  if(reparse && pdfContext && mode!=='free') selectPdfContext();
+  markPdfParseDirty();
 }
 $('#contentMode').onchange=()=>syncContentMode();
-$('#contentQuery').oninput=()=>{ if($('#contentMode').value==='custom'&&pdfContext) selectPdfContext(); };
-$('#target').addEventListener('change',()=>{ if(pdfContext && $('#contentMode').value!=='free') selectPdfContext(); });
-$('#targetDesc').addEventListener('input',()=>{ if(pdfContext && $('#contentMode').value!=='free') selectPdfContext(); });
-$('#uploadBtn').onclick=()=>$('#pdfFile').click();
+$('#contentQuery').oninput=markPdfParseDirty;
+$('#target').addEventListener('change',markPdfParseDirty);
+$('#targetDesc').addEventListener('input',markPdfParseDirty);
+$('#parsePdfBtn').onclick=()=>selectPdfContext();
+document.addEventListener('langchange',syncPdfParseButton);
+$('#uploadBtn').onclick=()=>{ if(!pdfParseBusy && !pdfUploadBusy) $('#pdfFile').click(); };
 $('#pdfFile').onchange=async e=>{
-  const file=e.target.files[0]; if(!file)return;
+  const file=e.target.files[0]; if(!file || pdfParseBusy || pdfUploadBusy)return;
+  pdfUploadBusy=true;
+  syncPdfParseButton();
   const btn=$('#uploadBtn'); btn.disabled=true; btn.setAttribute('aria-busy','true'); $('#uploadLabel').textContent=tt('up.reading');
   try{
     if(file.size>25*1024*1024) throw new Error(tt('up.size'));
@@ -1574,10 +1663,11 @@ $('#pdfFile').onchange=async e=>{
     const buf=await file.arrayBuffer();
     pdfContext={fileName:file.name,mime:file.type||'application/pdf',dataUri,buf,size:file.size};
     pdfText=null;
+    markPdfParseDirty();
     setExtractMetaKey('up.meta', {f:file.name,s:Math.round(file.size/1024)}, false);
     if($('#contentMode').value!=='free') await selectPdfContext();
   }catch(err){ showErr(tt('up.fail',{m:err.message})); showParseErr(tt('up.fail',{m:err.message})); }
-  finally{ btn.disabled=false; btn.removeAttribute('aria-busy'); $('#uploadLabel').textContent=tt('upload'); e.target.value=''; }
+  finally{ pdfUploadBusy=false; syncPdfParseButton(); btn.removeAttribute('aria-busy'); $('#uploadLabel').textContent=tt('upload'); e.target.value=''; }
 };
 
 /* ---------------- reference images -> data URI ---------------- */
@@ -1677,19 +1767,12 @@ function optgroup(label){
 function option(s){
   const o=document.createElement('option'); o.value=s; o.textContent=s; return o;
 }
-async function populateModels(){
-  const p = $('#provider').value, c = cfg();
+async function populateCustomModels(){
+  const p = $('#provider').value;
   const s = $('#model'); s.innerHTML='';
-  if(p==='custom'){
-    const g=optgroup(tt('og.custom')), manual=$('#customModel').value.trim();
-    if(manual){const o=option(manual);o.dataset.manualModel='';g.appendChild(o);}
-    s.appendChild(g);
-  }else if(mode==='svg'){
-    if(c.chat.length){ const g=optgroup(tt('og.chat')); c.chat.forEach(m=>g.appendChild(option(m))); s.appendChild(g); }
-    if(c.vision.length){ const g=optgroup(tt('og.vision')); c.vision.forEach(m=>g.appendChild(option(m))); s.appendChild(g); }
-  }else{
-    if(c.image.length){ const g=optgroup(tt('og.image')); c.image.forEach(m=>g.appendChild(option(m))); s.appendChild(g); }
-  }
+  const g=optgroup(tt('og.custom')), manual=$('#customModel').value.trim();
+  if(manual){const o=option(manual);o.dataset.manualModel='';g.appendChild(o);}
+  s.appendChild(g);
   const wanted = mode==='svg' ? 'chat' : 'image';
   const requestBase=baseURL(), requestKey=cleanKey($('#key').value);
   const res = await fetchOnlineModels();
@@ -1712,17 +1795,7 @@ async function populateModels(){
   if(mode==='image') await populateAnalyzeModels();
   populateReconstructionModels(res);
 }
-function populateReconstructionModels(res={list:[]}){
-  const p=$('#provider').value, c=cfg(), s=$('#reconModel');
-  const current=s.value;
-  const models=[...(p==='infistar'?['gpt-6.1-sol']:[]),...(c.vision||[]),...res.list.filter(m=>isVisualChatModel(m,c.vision||[]))];
-  s.replaceChildren(...[...new Set(models)].map(option));
-  const saved=localStorage.getItem('ff_recon_model_'+p);
-  if(saved && [...s.options].some(o=>o.value===saved))s.value=saved;
-  else if(current && [...s.options].some(o=>o.value===current))s.value=current;
-}
-$('#reconModel').onchange=e=>localStorage.setItem('ff_recon_model_'+$('#provider').value,e.target.value);
-async function populateParserModels(){
+async function populateCustomParserModels(){
   const p=$('#provider').value, c=cfg(), s=$('#parseModel'); s.innerHTML='';
   if(p==='custom'){
     s.appendChild(option('')); s.options[0].textContent=tt('og.fillid'); s.options[0].disabled=true;
@@ -1757,27 +1830,99 @@ async function populateAnalyzeModels(){
   const saved = localStorage.getItem('ff_amodel_'+$('#provider').value);
   if(saved && [...s.options].some(o=>o.value===saved)) s.value=saved;
 }
+let step3CatalogController;
+function step3Catalog(){
+  return step3CatalogController ||= createStep3ModelCatalog({
+    select:$('#model'),analysisSelect:$('#analyzeModel'),status:$('#step3CatalogStatus'),
+    readConfig:()=>{
+      const provider=$('#provider').value,c=cfg(),base=baseURL();
+      return {provider,base,key:cleanKey($('#key').value),proto:c.proto,mode,
+        chat:c.chat||[],image:c.image||[],vision:c.vision||[],
+        snapshotAllowed:provider==='nonelinear'&&base===(MAN.providers.nonelinear.base||'').replace(/\/+$/,'')};
+    },
+    readSaved:(p,analysis)=>localStorage.getItem((analysis?'ff_amodel_':'ff_model_')+p),
+    kindOf,isVisualModel:isVisualChatModel,
+    onLiveModels:list=>{liveModels.model=list;checkModelEnabled('#model','#modelWarn',list);},
+    onRender:()=>syncImageRatioSupport()
+  });
+}
+async function populateModels(){
+  if($('#provider').value==='custom') return populateCustomModels();
+  // Step 3 owns its discovery/display. Keep Step 4's original request and guard.
+  const p = $('#provider').value;
+  const wanted = mode==='svg' ? 'chat' : 'image';
+  const requestBase=baseURL(), requestKey=cleanKey($('#key').value);
+  const step3=step3Catalog().refresh();
+  const res = await fetchOnlineModels();
+  if(p!==$('#provider').value || requestBase!==baseURL() || requestKey!==cleanKey($('#key').value) || wanted!==(mode==='svg'?'chat':'image')) return;
+  populateReconstructionModels(res);
+  await step3;
+}
+function populateReconstructionModels(res={list:[]}){
+  const p=$('#provider').value, c=cfg(), s=$('#reconModel');
+  const current=s.value;
+  const models=[...(p==='infistar'?['gpt-6.1-sol']:[]),...(c.vision||[]),...res.list.filter(m=>isVisualChatModel(m,c.vision||[]))];
+  s.replaceChildren(...[...new Set(models)].map(option));
+  const saved=localStorage.getItem('ff_recon_model_'+p);
+  if(saved && [...s.options].some(o=>o.value===saved))s.value=saved;
+  else if(current && [...s.options].some(o=>o.value===current))s.value=current;
+}
+$('#reconModel').onchange=e=>localStorage.setItem('ff_recon_model_'+$('#provider').value,e.target.value);
+let parserCatalogController;
+function parserCatalog(){
+  return parserCatalogController ||= createParserModelCatalog({
+    select:$('#parseModel'),status:$('#parserCatalogStatus'),
+    readConfig:()=>{
+      const provider=$('#provider').value,c=cfg(),base=baseURL();
+      $('#parseCustomModelRow').hidden=provider!=='custom';
+      return {provider,base,key:cleanKey($('#key').value),proto:c.proto,
+        defaults:[...(c.chat||[]),...(c.vision||[])],
+        snapshotAllowed:provider==='nonelinear'&&base===(MAN.providers.nonelinear.base||'').replace(/\/+$/,''),
+        placeholder:provider==='custom'?tt('og.fillid'):!provider?refsText('请选择服务商','Select a provider'):''};
+    },
+    readSaved:p=>localStorage.getItem('ff_parse_model_'+p),
+    isParserModel:m=>kindOf(m)==='chat',
+    onLiveModels:list=>{liveModels.parser=list;checkModelEnabled('#parseModel','#parseModelWarn',list);}
+  });
+}
+function populateParserModels(){
+  if($('#provider').value==='custom') return populateCustomParserModels();
+  return parserCatalog().refresh();
+}
 $('#analyzeModel').onchange = e=>localStorage.setItem('ff_amodel_'+$('#provider').value, e.target.value);
 function initProviders(){
   // The official endpoint restricts browser CORS. The optional local launcher
   // supplies a same-origin, fixed-upstream relay without storing API keys.
-  MAN.providers.nonelinear={label:'非线智能 NoneLinear',base:window.FF_NONELINEAR_BASE||'https://api.nonelinear.com.cn/v1',proto:'oai',cors:!!window.FF_NONELINEAR_BASE,chat:['Qwen3-8B-nothink:free','qwen3-vl-32b-instruct'],vision:['qwen3-vl-32b-instruct'],image:['Qwen-Image']};
+  MAN.providers.nonelinear={label:'非线智能 NoneLinear（推荐）',base:window.FF_NONELINEAR_BASE||'https://api.nonelinear.com.cn/v1',proto:'oai',cors:!!window.FF_NONELINEAR_BASE,chat:['Qwen3-8B-nothink:free','qwen3-vl-32b-instruct'],vision:['qwen3-vl-32b-instruct'],image:['Qwen-Image']};
   // Register independently of the periodically refreshed upstream manifest.
   MAN.providers.infistar={label:'Infistar 无限星河',base:'https://infistar.cc/v1',proto:'oai',cors:true,chat:[],vision:[],image:[]};
   // Retire these providers even when a refreshed manifest still contains them.
   for(const id of ['sf','claude']) delete MAN.providers[id];
   MAN.providers.custom={label:'自定义 OpenAI 兼容 / Custom',base:'',proto:'oai',cors:true,chat:[],vision:[],image:[]};
+  const providerIds=['infistar','nonelinear','oai','custom'];
   const s = $('#provider');
-  s.replaceChildren();
-  for(const k of ['infistar',...Object.keys(MAN.providers).filter(k=>k!=='infistar')]){
+  // A retired selection stays unconfigured until the user picks a provider.
+  MAN.providers['']={base:'',chat:[],vision:[],image:[]};
+  const placeholder=option('');
+  placeholder.disabled=true;
+  placeholder.hidden=true;
+  s.replaceChildren(placeholder);
+  for(const k of providerIds){
     const o=option(k);
     if(k==='infistar'){o.dataset.i18n='provider.infistar';o.textContent=tt('provider.infistar');}
     else o.textContent=MAN.providers[k].label;
     s.appendChild(o);
   }
+  const officialOption=s.querySelector('option[value="oai"]');
+  const updateProviderLabels=()=>{
+    placeholder.textContent=refsText('请选择服务商','Select a provider');
+    officialOption.textContent=refsText('OpenAI 官网','OpenAI (official)');
+  };
+  updateProviderLabels();
+  document.addEventListener('langchange',updateProviderLabels);
   const saved=localStorage.getItem('ff_provider');
-  s.value=Object.hasOwn(MAN.providers,saved)?saved:'infistar';
-  localStorage.setItem('ff_provider',s.value);
+  s.value=saved===null?'infistar':providerIds.includes(saved)?saved:'';
+  if(s.value) localStorage.setItem('ff_provider',s.value);
   restoreProviderState(s.value);
   populateParserModels();
 }
@@ -1785,8 +1930,10 @@ function restoreProviderState(p){
   const reconEffort=localStorage.getItem('ff_recon_reasoning_effort_'+p);
   $('#reconReasoningEffort').value=['','medium','high','xhigh'].includes(reconEffort)?reconEffort:(p==='infistar'?'high':'');
   $('#infistarSignup').hidden = p!=='infistar';
-  $('#key').value = localStorage.getItem('ff_key_'+p)||'';
-  $('#baseOverride').value = localStorage.getItem('ff_base_'+p)||'';
+  $('#nonelinearSignup').hidden = p!=='nonelinear';
+  $('#key').disabled = !p;
+  $('#key').value = p ? localStorage.getItem('ff_key_'+p)||'' : '';
+  $('#baseOverride').value = p ? localStorage.getItem('ff_base_'+p)||'' : '';
   $('#customModel').value = localStorage.getItem('ff_cmodel_'+p)||'';
   $('#parseCustomModel').value = localStorage.getItem('ff_parse_cmodel_'+p)||'';
   $('#customVisionModel').value = localStorage.getItem('ff_vision_cmodel_'+p)||'';
@@ -1794,8 +1941,8 @@ function restoreProviderState(p){
   const c = cfg();
   const needRelay = c.cors===false || p==='infistar';
   $('#useRelay').checked = p==='custom' || needRelay || localStorage.getItem('ff_relay_'+p)==='1';
-  $('#relayToggle').hidden = p==='infistar' || p==='custom';
-  $('#relayRow').hidden = p==='infistar' || !$('#useRelay').checked;
+  $('#relayToggle').hidden = !p || p==='infistar' || p==='custom';
+  $('#relayRow').hidden = !p || p==='infistar' || !$('#useRelay').checked;
   $('#customModelRow').hidden = p!=='custom';
   $('#corsNote').hidden = c.cors!==false;
   if(c.cors===false) $('#corsNote').innerHTML = tt('cors.note');
@@ -1809,13 +1956,14 @@ $('#provider').onchange = async e=>{
   restoreProviderState(e.target.value);
   await Promise.all([populateModels(),populateParserModels()]);
 };
-$('#key').oninput = e=>{ e.target.value=cleanKey(e.target.value); localStorage.setItem('ff_key_'+$('#provider').value, e.target.value); };
-  $('#baseOverride').oninput = e=>{ localStorage.setItem('ff_base_'+$('#provider').value, e.target.value); syncRelayPreset(); syncBaseHint(); };
+$('#key').oninput = e=>{ e.target.value=cleanKey(e.target.value); localStorage.setItem('ff_key_'+$('#provider').value, e.target.value); if($('#provider').value!=='custom'){parserCatalog().schedule(); step3Catalog().schedule();} };
+  $('#baseOverride').oninput = e=>{ localStorage.setItem('ff_base_'+$('#provider').value, e.target.value); syncRelayPreset(); syncBaseHint(); if($('#provider').value!=='custom'){parserCatalog().schedule(); step3Catalog().schedule();} };
 $('#customModel').oninput = e=>{
   localStorage.setItem('ff_cmodel_'+$('#provider').value,e.target.value);
   const select=$('#model'), model=e.target.value.trim();
   select.querySelector('[data-manual-model]')?.remove();
   if(model){const o=option(model);o.dataset.manualModel='';select.prepend(o);select.value=model;}
+  syncImageRatioSupport();
 };
 $('#parseModel').onchange = e=>localStorage.setItem('ff_parse_model_'+$('#provider').value,e.target.value);
 $('#parseCustomModel').oninput = e=>localStorage.setItem('ff_parse_cmodel_'+$('#provider').value,e.target.value);
@@ -1835,6 +1983,7 @@ $('#useRelay').onchange = e=>{
   $('#relayRow').hidden = !e.target.checked;
   localStorage.setItem('ff_relay_'+$('#provider').value, e.target.checked?'1':'0');
   syncBaseHint();
+  if($('#provider').value!=='custom'){parserCatalog().schedule(); step3Catalog().schedule();}
 };
 function syncRelayPreset(){
   const base=baseURL();
@@ -1860,8 +2009,8 @@ document.querySelectorAll('#modeTabs button').forEach(b=>b.onclick=async ()=>{
   $('#imageDimensionsRow').hidden=mode!=='image';
   syncImageRatioSupport();
   $('#modelLabel').textContent = mode==='svg' ? tt('modelLabel.svg') : tt('modelLabel.image');
-  await populateModels();
   syncPassUI();
+  await populateModels();
 });
 function syncPassUI(){
   $('#analyzeModelRow').hidden = mode!=='image';
@@ -1879,24 +2028,17 @@ document.querySelectorAll('#passTabs button').forEach(b=>b.onclick=()=>{
 function syncImageRatioSupport(){
   const warn=$('#imageRatioWarn');
   if(!warn) return;
-  for(const option of $('#imageResolution').options) option.disabled=false;
   warn.hidden=true;warn.textContent='';warn.classList.remove('audit-ok');
   if(mode!=='image') return;
   const p=$('#provider').value,model=generationModel();
   if(!model) return;
-  if(p==='nonelinear'){
-    for(const option of $('#imageResolution').options){
-      try{imageRequestDimensions(p,model,$('#figureRatio').value,option.value);}
-      catch{option.disabled=true;}
-    }
-    const selected=$('#imageResolution').selectedOptions[0];
-    if(selected?.disabled){
-      const supported=Array.from($('#imageResolution').options).find(option=>!option.disabled);
-      if(supported) $('#imageResolution').value=supported.value;
-    }
-  }
+  const select=$('#imageResolution'),previous=select.value;
+  const supported=step3ImageResolutions(p,model,$('#figureRatio').value,usesInfistarGemini(baseURL(),model));
+  select.replaceChildren(...supported.map(value=>new Option(value,value)));
+  if(supported.includes(previous))select.value=previous;
+  select.disabled=!supported.length;
   try{
-    imageRequestDimensions(p,model,$('#figureRatio').value,$('#imageResolution').value,usesInfistarGemini(baseURL(),model));
+    assertStep3ImageResolution(p,model,$('#figureRatio').value,select.value,usesInfistarGemini(baseURL(),model),GAL_I18N.lang==='en');
   }catch(error){
     warn.textContent=tt('img.unsupported',{model,ratio:$('#figureRatio').value,resolution:$('#imageResolution').value});
     if(p==='nonelinear') warn.textContent=`${model} 的非线智能接口未声明支持当前比例与分辨率组合，请选择可用配置。`;
@@ -1904,6 +2046,11 @@ function syncImageRatioSupport(){
     return;
   }
   if(p==='infistar'){
+    if(/^gemini-3\.1-flash-lite-image(?:$|-)/i.test(model)){
+      warn.textContent=refsText('该模型仅支持 1K，已只显示可用分辨率。','This model supports 1K only. Only available resolutions are shown.');
+      warn.hidden=false;
+      return;
+    }
     const status=infistarAuditStatus(model,$('#figureRatio').value,$('#imageResolution').value);
     const key={verified:'img.auditVerified',rejected:'img.auditRejected',unavailable:'img.auditUnavailable',limited:'img.auditLimited',wrongSize:'img.auditWrongSize',inconclusive:'img.auditInconclusive',untested:'img.auditUntested'}[status];
     warn.textContent=tt(key,{model,ratio:$('#figureRatio').value,resolution:$('#imageResolution').value});
@@ -2398,11 +2545,13 @@ function friendlyHttp(status, txt){
   return tt('err.http',{s:status,t:txt.slice(0,200)})+apiContext();
 }
 function postJSON(base, path, body, key, extraHeaders, timeoutMs=Infinity){
+  if(path==='/chat/completions') body=normalizeChatTokenLimit(body);
   return (path==='/chat/completions'?requestChat:fetchWithTimeout)(base+path,{method:'POST',
     headers:{'Content-Type':'application/json',Authorization:'Bearer '+key,...extraHeaders},
     body:JSON.stringify(body)},timeoutMs);
 }
 function postSvgJSON(base,body,key,provider){
+  body=normalizeChatTokenLimit(body);
   return requestSvgChat(base+'/chat/completions',{method:'POST',
     headers:{'Content-Type':'application/json',Authorization:'Bearer '+key},
     body:JSON.stringify(body)},provider==='custom');
@@ -2489,7 +2638,10 @@ function setStep(n,state){
   if(n===1 && state==='done') $('#stline1').classList.add('active');
 }
 $('#genBtn').onclick = async ()=>{
-  $('#genErr').hidden=true; $('#out').style.display='none';
+  $('#genErr').hidden=true;
+  await revisionGallery.ready;
+  if(!revisionGallery.canGenerate()){showErr('请等待当前任务完成后再生成新的原始图；已有图片仍可继续修改。');return;}
+  if(!$('#out .ff-revisions'))$('#out').style.display='none';
   const content = $('#paper').value.trim();
   if(!content){ showErr(tt('gen.content')); return; }
   if(!refs.size){ showErr(tt('gen.refs')); return; }
@@ -2534,10 +2686,12 @@ $('#genBtn').onclick = async ()=>{
       $('#stepper').hidden=true; btn.textContent=tt('gen.working');
     }
     if(mode==='svg'){
+      try{ globalThis.GalleryAnalytics?.generation(mode); }catch{} // analytics: isolated task start
       if(useAnthropic) await genAnthropicSVG(base,model,key,content,refIds,layoutGuide);
       else await genOaiSVG(base,model,key,content,p,refIds,layoutGuide);
     }else{
       if(useAnthropic) throw new Error(tt('gen.claudeImage'));
+      try{ globalThis.GalleryAnalytics?.generation(mode); }catch{} // analytics: isolated task start
       await genOaiImage(base,model,key,content,p,refIds,layoutGuide);
     }
     if(passMode==='two') setStep(2,'done');
@@ -2548,7 +2702,7 @@ $('#genBtn').onclick = async ()=>{
 async function genOaiSVG(base,model,key,content,p,refIds,layoutGuide){
   const useIds = refIds||[...refs];
   const prompt = buildPrompt(content,layoutGuide,useIds);
-  let body = {model,temperature:0.3,max_tokens:96000}, usedVision=false;
+  let body = normalizeChatTokenLimit({model,temperature:0.3,max_tokens:96000}), usedVision=false;
   if(p==='ark' && !relayBase()) body.thinking={type:'disabled'};
   if(useIds.length && p!=='ds'){
     const uris = await refDataURIs(useIds);
@@ -2559,22 +2713,33 @@ async function genOaiSVG(base,model,key,content,p,refIds,layoutGuide){
   }else{
     body.messages=[{role:'system',content:SVG_SYS},{role:'user',content:prompt}];
   }
-  let r;
-  try{ r = await postSvgJSON(base,body,key,p); }
-  catch(e){
-    if(e.name==='TimeoutError') throw new Error(tt('svg.timeout'));
-    const diag=await diagnoseConnection(base,key,model);
-    throw new Error(diag || (tt('svg.blocked')+apiContext()));
+  let parsed;
+  if(p==='nonelinear'){
+    parsed=await requestStep3Svg({base,modelBody:body,key,
+      parseXML:code=>new DOMParser().parseFromString(code,'image/svg+xml'),
+      onRetry:({nextAttempt,maxAttempts})=>setGenNote((window.GAL_I18N?.lang||'en').startsWith('zh')
+        ? `SVG 响应暂未完整返回，正在恢复（${nextAttempt}/${maxAttempts}）...`
+        : `Recovering SVG generation (${nextAttempt}/${maxAttempts})...`)});
+  }else{
+    let r;
+    try{ r = await postSvgJSON(base,body,key,p); }
+    catch(e){
+      if(e.name==='TimeoutError') throw new Error(tt('svg.timeout'));
+      const diag=await diagnoseConnection(base,key,model);
+      throw new Error(diag || (tt('svg.blocked')+apiContext()));
+    }
+    let txt = await r.text();
+    // Preserve references on provider failures; never silently switch to text-only.
+    if(!r.ok) throw new Error(friendlyHttp(r.status,txt));
+    const d = JSON.parse(txt);
+    parsed = svgChatResponse(d, {parseXML:code=>new DOMParser().parseFromString(code,'image/svg+xml'),
+      chinese:(window.GAL_I18N?.lang||'en').startsWith('zh')});
   }
-  let txt = await r.text();
-  // Preserve references on provider failures; never silently switch to text-only.
-  if(!r.ok) throw new Error(friendlyHttp(r.status,txt));
-  const d = JSON.parse(txt);
-  const parsed = extractSvgCode(d.choices?.[0]?.message?.content||'', true);
   const code = parsed.code;
   if(!code) throw new Error(tt('svg.none'));
   const auditRes = await auditAndRepair(code, {base, model, key, provider:p, anthropic:false},
     (r,n)=>setGenNote(tt('audit.repairing',{r:r, n:n})), parsed.truncated);
+  revisionGallery.leave();
   renderSVG(auditRes.svg, usedVision, useIds, parsed.truncated, auditRes);
 }
 
@@ -2616,6 +2781,7 @@ async function genAnthropicSVG(base,model,key,content,refIds,layoutGuide){
   if(!code) throw new Error(tt('svg.claudeNone'));
   const auditRes = await auditAndRepair(code, {base, model, key, provider:'claude', anthropic:true},
     (r,n)=>setGenNote(tt('audit.repairing',{r:r, n:n})), parsed.truncated);
+  revisionGallery.leave();
   renderSVG(auditRes.svg, usedVision, useIds, parsed.truncated, auditRes);
 }
 /* ---------------- geometry audit: measure the draft before showing it ----------------
@@ -4566,12 +4732,8 @@ function buildFidelityScene(scene, sourceCanvas){
     counts:Object.assign({},scene.counts||{},{fidelityTiles:patches.length})};
 }
 
-async function ensureBitmapDataUrl(src){
-  if(!src) return null;
-  if(/^data:image\//i.test(String(src))) return String(src);
-  const r = await fetchBitmapSource(src,{provider:$('#provider').value,base:baseURL(),key:$('#key').value.trim()});
-  if(!r.ok) throw new Error('Reference image could not be read');
-  return fileToDataURI(await r.blob());
+async function ensureBitmapDataUrl(src,signal){
+  return readBitmapSource(src,{provider:$('#provider').value,base:baseURL(),key:$('#key').value.trim(),signal},fileToDataURI);
 }
 
 function editableScenePrompt(W,H,paper){
@@ -5075,7 +5237,6 @@ async function requestEditableScene(imageDataUri,W,H,tileAudit,revision){
       }else{
         const body={
           model,
-          temperature:0.1,
           max_tokens:audit.wholeImage?128000:audit.defectDiagnosis?8000:audit.regionPatch?16000:32000,
           messages:[
             {role:'system',content:RECON_SYS},
@@ -5091,7 +5252,8 @@ async function requestEditableScene(imageDataUri,W,H,tileAudit,revision){
           // contain malformed scene JSON, triggering costly tile subdivision.
           body.response_format={type:'json_object'};
         }
-        const r=await (usesReconstructionStream($('#provider').value)?fetchReconstructionStream:fetchTextWithTimeout)(baseURL()+'/chat/completions',{
+        const responses=usesReconstructionResponses($('#provider').value,model,wholeRequest);
+  const r=await (responses?fetchReconstructionResponses:usesReconstructionStream($('#provider').value)?fetchReconstructionStream:fetchTextWithTimeout)(baseURL()+(responses?'/responses':'/chat/completions'),{
           method:'POST',signal:audit.signal,
           headers:{'Content-Type':'application/json',Authorization:'Bearer '+cleanKey($('#key').value)},
           body:prepareBody(body)
@@ -5203,6 +5365,7 @@ async function requestEditableScene(imageDataUri,W,H,tileAudit,revision){
       return scene;
     }catch(err){
       lastError=err;
+      if(err.reconstructionTransport)audit.transport={...err.reconstructionTransport};
       if(responseRecord){responseRecord.error=String(err.message||err);await persistReconArchive();}
       audit.lastError=String(err&&err.message||err);
       const delay=err.imageTransportFailure?null:reconstructionRetryDelay(err,attempt,formatAttempts);
@@ -5217,6 +5380,7 @@ async function requestEditableScene(imageDataUri,W,H,tileAudit,revision){
   audit.durationMs=audit.finishedAt-audit.startedAt;
   audit.attempts=audit.attempt||maxAttempts;
   if(lastError)lastError.message=reconstructionFailureMessage(lastError,audit.attempts,GAL_I18N.lang==='zh',audit)||lastError.message;
+  if(lastError&&audit.transport?.requestId&&!lastError.message.includes(audit.transport.requestId))lastError.message+=' [request-id: '+audit.transport.requestId+']';
   audit.error=String(lastError&&lastError.message||lastError||tt('recon.badjson'));
   throw lastError||new Error(tt('recon.badjson'));
 }
@@ -5411,7 +5575,7 @@ async function runReconstruction(options={}){
   const formatElapsed=ms=>{const seconds=Math.floor(Math.max(0,ms)/1000);return Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');};
   const timer=setInterval(()=>{if(audit.state==='pending'&&status)status.textContent='单次整图识别中 · '+formatElapsed(Date.now()-startedAt)+' · 不进行分区、验收或修补';},1000);
   try{
-    const src=await ensureBitmapDataUrl(syncStep3Bitmap());
+    const src=await ensureBitmapDataUrl(syncStep3Bitmap(),controller.signal);
     if(!src)throw Error('请先上传位图');
     const im=await loadImage(src), W=im.naturalWidth||im.width,H=im.naturalHeight||im.height;
     const pinnedModel=editableReconstructionModel();if(!pinnedModel)throw Error('请先选择步骤四整图识别模型');
@@ -5464,7 +5628,7 @@ async function requestRegionLabels(regions, canvas){
     const d = JSON.parse(txt);
     txt = (d.content||[]).filter(function(b){ return b.type === 'text'; }).map(function(b){ return b.text; }).join('');
   }else{
-    const body = { model:model, temperature:0.2,
+    const body = { model:model,
                    messages:[{ role:'system', content:ANALYZE_SYS },
                              { role:'user', content:prompt }] };
     if($('#provider').value === 'ark' && !relayBase()) body.thinking = { type:'disabled' };
@@ -5885,10 +6049,76 @@ function initEditableExport(){
 }
 initEditableExport();
 
-window.__ffRenderSVG = (...args) => renderSVG(...args);
+window.__ffRenderSVG = (...args) => {revisionGallery.leave();return renderSVG(...args);};
 
 /* Exposed the same way as __ffRenderSVG: the rebuild is otherwise module-scoped. */
 window.__ffReconstruct = () => runReconstruction();
+function revisionConfiguration(version, validate=true){
+  const svg=version.source==='svg',p=$('#provider').value;
+  const model=generationModel().trim();
+  const route={p,model,base:baseURL(),proto:cfg().proto,ratio:$('#figureRatio').value,resolution:$('#imageResolution').value};
+  const key=cleanKey($('#key').value);
+  if(validate){
+    if(mode!==(svg?'svg':'image'))throw new Error(svg?'请在步骤三选择「SVG 可编辑初稿」，并选择视觉模型。':'请在步骤三选择「AI 位图初稿」，并选择图像模型。');
+    if(!model || (p!=='custom' && (svg?!isVisualChatModel(model,cfg().vision||[]):!(kindOf(model)==='image'||(cfg().image||[]).includes(model)))))throw new Error(svg?'请在步骤三选择支持图像输入的视觉模型。':'请在步骤三选择图像模型。');
+    if(!key)throw new Error('请先填写当前服务商的 API Key。');
+    if(!/^https?:\/\//.test(route.base))throw new Error('请先配置有效的服务商接口地址。');
+  }
+  return {route,key};
+}
+const revisionGallery=createRevisionGallery({
+  output:$('#out'),
+  busy:()=>exportUploadPending || !!ensureExportState().reconPending || $('#exportConfirm')?.classList.contains('is-busy'),
+  getState:()=>ensureExportState(),currentImage:()=>currentStep3Bitmap(),
+  isCurrent:v=>v.source==='svg'?ensureExportState().source==='svg'&&ensureExportState().baseSvg===v.svg:ensureExportState().source!=='svg'&&currentStep3Bitmap()===v.image,
+  modelLabel:v=>{let label='修改模型：'+(revisionConfiguration(v,false).route.model||'未选择')+' · '+(v.source==='svg'?'视觉模型':'图像模型');try{revisionConfiguration(v);}catch(e){label+='（'+e.message+'）';}return label;},
+  captureView:()=>({status:[...$('#exportStatus').childNodes],reconStatus:$('#reconStatus').textContent,
+    archive:window.__ffReconArchive,responses:window.__ffReconResponses,timing:window.__ffDirectTiming}),
+  activate:v=>{
+    if(v.source==='svg'){
+      if(v.state?.svg){window.__ffExportState=structuredClone(v.state);renderEditableExportCard();}
+      else showEditableExportStep(v.svg);
+      return;
+    }
+    uploadedExportBitmap='';
+    window.__ffExportState=v.state?structuredClone(v.state):{svg:'',baseSvg:'',scene:null,recon:null,reconPending:false,
+      reconFailed:false,reconError:'',source:'bitmap',bitmap:v.image,reconBitmap:v.image,
+      hasStep3Output:true,target:'svg',font:'original',exportMode:'vector'};
+    markStep3Output(v.image);
+    $('#out').querySelectorAll('[data-step3-output]').forEach(img=>img.removeAttribute('data-step3-output'));
+    v.card.querySelector('img').dataset.step3Output='true';
+    $('#reconStatus').textContent=v.view?.reconStatus||'';
+    window.__ffReconArchive=v.view?.archive||null;window.__ffReconResponses=v.view?.responses||[];
+    window.__ffDirectTiming=v.view?.timing||null;
+    renderEditableExportCard();
+    if(v.view?.status)$('#exportStatus').replaceChildren(...v.view.status);
+  },
+  generate:async(parent,prompt)=>{
+    const {route,key}=revisionConfiguration(parent);
+    const input={...parent,route};
+    if(parent.source==='svg')return generateSVGRevision(input,prompt,{route,key,post:async(path,body)=>{
+      const response=route.proto==='anthropic'?await fetchWithTimeout(route.base+path,{method:'POST',headers:anthropicHeaders(key),body:JSON.stringify(body)},240000):route.p==='custom'?await postSvgJSON(route.base,body,key,route.p):await postJSON(route.base,path,body,key,240000);
+      if(!response.ok)throw new Error('SVG 修改请求失败（HTTP '+response.status+'）');
+      return response.json();
+    }});
+    return {...await generateRevision(input,prompt,{key,toDataURL:ensureBitmapDataUrl,loadImage}),route};
+  },
+  rebuild:()=>$('#reconBtn').click(),
+  showExport:()=>$('#card4').scrollIntoView({behavior:'smooth',block:'start'}),
+  download:async v=>{if(v.source==='svg'){downloadBlob('figure-forge-v'+v.number+'.svg',new Blob([v.svg],{type:'image/svg+xml'}));return;}try{const response=await fetch(v.image);if(!response.ok)throw new Error('download');
+    const blob=await response.blob(),ext=blob.type.includes('webp')?'webp':/jpe?g/.test(blob.type)?'jpg':'png';
+    downloadBlob('figure-forge-v'+v.number+'.'+ext,blob);
+  }catch{window.open(v.image,'_blank');}}
+});
+for(const id of ['modeTabs','model','customModel','provider','baseOverride','key']){
+  $('#'+id)?.addEventListener(id==='modeTabs'?'click':'change',()=>queueMicrotask(()=>revisionGallery.refresh()));
+}
+// Export may finish after its button was clicked; keep version controls in sync.
+new MutationObserver(()=>revisionGallery.refresh()).observe($('#exportConfirm'),{attributes:true,attributeFilter:['class','disabled']});
+// Save version results before an independent SVG or uploaded-image selection takes over.
+$('#exportBitmapUpload')?.addEventListener('change',()=>revisionGallery.leave(),true);
+$('#exportUseGenerated')?.addEventListener('click',()=>revisionGallery.leave(),true);
+
 /* Kept alongside the other hooks so the card can be re-rendered from outside. */
 window.__ffRefreshExportCard = () => renderEditableExportCard();
 
@@ -5964,8 +6194,10 @@ $('#refineReconBtn')?.addEventListener('click',async()=>{
   try{await runReconstruction({refine:true});}finally{st.reconPending=false;renderEditableExportCard();}
 });
 $('#reconBtn')?.addEventListener('click', async function(){
+  if(revisionGallery.busy())return;
   const btn = $('#reconBtn');
   const st = window.__ffExportState;
+  const versionJob=revisionGallery.begin();
   st.skipReconCacheOnce = true;
   st.reconPending = true;
   renderEditableExportCard();
@@ -5978,6 +6210,7 @@ $('#reconBtn')?.addEventListener('click', async function(){
     st.reconPending = false;
     if(!ok&&!st.scene) st.reconFailed = true;
     renderEditableExportCard();
+    revisionGallery.finish(versionJob);
   }
 });
 
@@ -6000,17 +6233,11 @@ function svgPreviewDocument(svg){
 }
 
 function renderSVG(svg, usedVision, useIds, truncated, auditRes){
-  const blob = new Blob([svg],{type:'image/svg+xml'});
-  const url = URL.createObjectURL(blob);
-  const n = (useIds||[...refs]).length;
-  const auditNote = auditRes ? auditSummaryText(auditRes) : '';
-  $('#out').style.display='block';
-  $('#out').innerHTML = `<iframe sandbox title="SVG preview"></iframe>
-    <div class="dl"><a class="btn-primary" href="${url}" download="figure-forge-draft.svg">${tt('svg.download')}</a>
-    <span class="hint">${usedVision?tt('svg.hint1',{n:n}):tt('svg.hint2')}${truncated?tt('svg.trunc'):''}${auditNote}</span></div>`;
-  const frame=$('#out iframe');
-  if(frame) frame.srcdoc=svgPreviewDocument(svg);
-  showEditableExportStep(svg);
+  try{
+    const result=revisionGallery.addInitial({...svgVersion(svg),route:revisionConfiguration({source:'svg'},false).route});
+    result.catch(error=>showErr(error.message));
+    return result;
+  }catch(error){showErr(error.message);throw error;}
 }
 
 function imagePromptBudget(model){
@@ -6058,18 +6285,18 @@ function prioritizedImagePaper(content,budget,available){
 }
 function compactImageGuide(j){
   if(!j || !Array.isArray(j.layoutBlueprint)) return '';
-  const zones=j.layoutBlueprint.slice(0,16).map((z,i)=>{
+  const zones=j.layoutBlueprint.slice(0,16).map(z=>{
     if(!z || typeof z!=='object') return '';
-    const name=String(z.role||z.id||z.name||'module').slice(0,10);
+    const name=String(z.role||z.name||'content module').replace(/^zone\s*\d+\s*[:：.-]?\s*/i,'').slice(0,80);
     const nums=[z.x,z.y,z.w,z.h].map(Number);
-    const box=nums.every(Number.isFinite)?` @${nums.map((n,k)=>Math.round(n/(k%2?900:1600)*100)).join(',')}%`:'';
-    return `${i+1}:${name}${box}`;
+    const position=nums.every(Number.isFinite) ? ` bbox=(${nums.join(',')})` : '';
+    return `${name}${position}`;
   }).filter(Boolean);
   const palette=Array.isArray(j.palette)?j.palette.slice(0,5).join(',')
     : j.palette && typeof j.palette==='object'
       ? ['background','primary','accent','neutral'].map(k=>j.palette[k]).filter(Boolean).slice(0,5).join(',')
       : '';
-  return zones.length ? `Layout zones (${zones.length}; preserve every zone): ${zones.join(' | ')}.\n${palette?`Palette: ${palette}.\n`:''}` : '';
+  return zones.length ? `Internal composition plan, never visible text. bbox=(x,y,width,height) on the source 1600x900 grid; preserve these precise relative positions and sizes when scaling to the selected aspect ratio. Adjust spacing/sizes only as needed to fill the full rectangle with even margins; no missing corner. Never print bbox values, Zone IDs or planning instructions; visible labels must name paper components: ${zones.join(' | ')}.\n${palette?`Palette: ${palette}.\n`:''}` : '';
 }
 function selectImageRoute(route){
   const status=imageRoutes.status(route);
@@ -6078,6 +6305,8 @@ function selectImageRoute(route){
   return route;
 }
 async function genOaiImage(base,model,key,content,p,refIds,layoutGuide,attempted=[]){
+  await revisionGallery.ready;
+  if(!revisionGallery.canGenerate())throw new Error('请等待当前可编辑版处理完成后再生成新的原始图。');
   const useIds = refIds||[...refs];
   const ratio=$('#figureRatio').value, resolution=$('#imageResolution').value;
   const requested={base,model,key,p,ratio,resolution,references:useIds.length>0};
@@ -6087,10 +6316,11 @@ async function genOaiImage(base,model,key,content,p,refIds,layoutGuide,attempted
     return genOaiImage(route.base,route.model,route.key,content,route.p,useIds,layoutGuide,[...attempted,requested]);
   attempted=[...attempted,route];
   const nativeGemini=usesInfistarGemini(base,model);
-  const dimensions=imageRequestDimensions(p,model,ratio,resolution,nativeGemini);
+  assertStep3ImageResolution(p,model,ratio,resolution,nativeGemini,GAL_I18N.lang==='en');
+  const dimensions=step3ImageDimensions(p,model,ratio,resolution,nativeGemini);
   const tg = TARGETS[$('#target').value] || TARGETS.overview;
   const guide = layoutGuide
-    ? `COMMON VISUAL GRAMMAR extracted across all selected references (highest priority; synthesize recurring panel topology, relative geometry, density, palette, spacing, arrows and hierarchy):\n${layoutGuide}\n\n`
+    ? `INTERNAL REFERENCE GUIDE, never render its planning text or coordinates. Synthesize panel topology, density, palette, spacing, arrows and hierarchy; reflow geometry to fill the requested rectangle:\n${layoutGuide}\n\n`
     : '';
   const logicalCanvas=figureCanvas(ratio);
   const hasAnalyzedLayout=passMode==='two' && !!analysis?.j;
@@ -6104,8 +6334,7 @@ async function genOaiImage(base,model,key,content,p,refIds,layoutGuide,attempted
     + `Use a prominent bold TITLE line when that is a recurring convention in the references, otherwise keep a compact top region. `
     + `Use the recurring zone count, order, relative widths/heights and module-slot density from the design contract, allowing a new arrangement that combines the shared structure. `
     + `Do not collapse the shared structure into a sparse or symmetric generic grid. Treat the blueprint as a construction plan; every defined slot must receive `
-    + `one concrete content module from this paper, with the same nesting and approximate occupied area as the shared blueprint. Each zone carries its `
-    + `own header only when the shared blueprint calls for one. `
+    + `one concrete content module from this paper. Preserve nesting, but resize and reflow modules to fill the full rectangular composition. Headers must name actual paper components, never blueprint zone names or coordinates. `
     + `Use nested grouping where the shared blueprint shows it: section containers, grouping frames and module boxes are not interchangeable. `
     + `Inside each prescribed slot, use the module kind named by the blueprint — illustration, mini chart, table, formula, photo thumbnail, icon, `
     + `matrix, timeline or flow strip — and keep its footprint and alignment. Do not collapse several slots into one large generic card. `
@@ -6154,8 +6383,7 @@ async function genOaiImage(base,model,key,content,p,refIds,layoutGuide,attempted
     + `White background, clean flat vector illustration, crisp aligned shapes, clearly readable short `
     + `English labels. `
     + `FINAL CHECK before you finish. Read the figure as a reviewer would. `
-    + `Is any section still holding a large empty area? Fill it with further module boxes that show `
-    + `this method's own parts. `
+    + `Is a corner or section still holding a large empty area? Resize and redistribute the existing paper-specific modules to fill the rectangle; do not invent results or filler. `
     + `Is any box a near-duplicate of its neighbour, or an element that could sit in any paper? `
     + `Replace it with a different kind of element that is specific to this method. `
     + `Can a reader name what every box contains by looking at it? If a box is generic, make it `
@@ -6166,6 +6394,8 @@ async function genOaiImage(base,model,key,content,p,refIds,layoutGuide,attempted
     + `The goal is a figure that is full, varied and specific to this paper — what a top-conference `
     + `reviewer would find clear and well judged. `;
   const budget=imagePromptBudget(model);
+  // Mandatory bitmap-only rules stay outside style compression on every route.
+  const compositionRules=`COMPOSITION RULES: Fill the complete ${ratio} rectangular canvas with balanced panels and small even margins/gutters. No missing corner, L-shaped content, or large blank region. Resize/reflow existing modules without inventing content. Never draw planning metadata: Zone labels/numbers, layout coordinates/percentages, role codes or instructions. Show only paper-specific labels; genuine chart axes/measurements are allowed.\n`;
   const compact=`Create a publication-quality ${ratio} paper figure. Preserve panel hierarchy, arrows, palette and dense meaningful modules.\n`
     +zonePriority
     +`Populate every zone with this paper's actual method and results. ${tg.img.slice(0,100)}. Short legible labels.\n`
@@ -6173,7 +6403,7 @@ async function genOaiImage(base,model,key,content,p,refIds,layoutGuide,attempted
       ? fitImagePrompt(layoutGuide||'',budget,Math.floor(budget.limit*(hasAnalyzedLayout?.35:.3)))+'\n'
       : '');
   // Keep the selected intent outside style compression, including custom text.
-  const intent=generationIntent(content)+'\n';
+  const intent=generationIntent(content)+'\n'+compositionRules;
   const paperReserve=Math.min(imagePromptSize(content,budget),Math.floor(budget.limit*(budget.unit==='tokens'?.25:.35)));
   const paperHeader='\nPaper content (figure-critical facts first):\n';
   if(imagePromptSize(intent+paperHeader,budget)+paperReserve>=budget.limit){
@@ -6196,7 +6426,7 @@ async function genOaiImage(base,model,key,content,p,refIds,layoutGuide,attempted
   }
   if(p==='ark' && !relayBase()){ body.response_format='b64_json'; body.watermark=false; }
   if(useIds.length && (nativeGemini || p!=='glm')){
-    const uris = await refDataURIs(useIds);
+    const uris = await step3ReferenceInputs(p,useIds,referenceFigure,refDataURIs);
     body.image = (p==='sf' && !nativeGemini) ? uris[0] : uris;
     usedRefs=true;
   }
@@ -6209,12 +6439,16 @@ async function genOaiImage(base,model,key,content,p,refIds,layoutGuide,attempted
   }
   let r;
   try{
-    r=await requestImageWithRecovery({url:base+endpoint,body,key,
-      usedReferences:usedRefs,allowReferenceFallback:false,
-      onRecovery:kind=>{ if(kind==='reference')recordImageRoute(route,'blocked'); $('#genBtn').textContent=tt('img.recovery.'+kind); }});
+    body=prepareStep3ImageBody(body,model,nativeGemini);
+    r=usesInfistarImageJob(base+endpoint,model)
+      ? await requestInfistarImageJob({url:base+endpoint,body,key,usedReferences:usedRefs,onProgress:showInfistarJobProgress})
+      : await requestStep3ImageStream({url:base+endpoint,body,key,usedReferences:usedRefs,fetchImpl:protocolFetch()});
   }catch(e){
-    if(e.name==='TimeoutError') throw new Error(tt('img.timeout')+apiContext());
-    throw new Error(tt('img.connection')+apiContext());
+    if(e.code?.startsWith('JOB_'))throw e;
+    const diagnostic=e.imageDiagnostics;
+    const hint=diagnostic?' [stage: '+diagnostic.stage+(diagnostic.requestId?'; request-id: '+diagnostic.requestId:'')+']':'';
+    const message=/^IMAGE_STREAM_/.test(e.code||'')?tt('img.abnormal',{t:e.message}):e.name==='TimeoutError'?tt('img.timeout'):tt('img.connection');
+    throw Object.assign(new Error(message+hint+apiContext()),{imageDiagnostics:diagnostic});
   }
   usedRefs=r.usedReferences;
   const txt=r.text;
@@ -6237,14 +6471,14 @@ async function genOaiImage(base,model,key,content,p,refIds,layoutGuide,attempted
     const diagnostic=transport?` ${zh?'本次请求':'Request'}: POST ${transport.endpoint}; ${transport.format}; ${zh?'参考图':'references'}=${transport.referenceCount}; size=${transport.size||'default'}.`:'';
     const referenceHint=imageFailureKind(r.status,txt)==='reference'
       ?(zh?' 此响应只说明本次请求方式被拒绝，不能据此判断模型不支持参考图；需核对成功客户端的接口路径和上传格式。':' This rejects the submitted request mode; it does not establish that the model lacks reference-image support. Compare the endpoint and upload format with a working client.'):'';
-    const message=friendlyHttp(r.status,txt)+diagnostic+referenceHint+(r.requestId?' Request ID: '+r.requestId:'');
+    const message=(r.resultError?'服务商响应已收到，但图片结果无效：'+r.resultError+'。原任务记录已保留，请先核查，勿重复生成。':friendlyHttp(r.status,txt))+diagnostic+referenceHint+(r.requestId?' Request ID: '+r.requestId:'');
     throw new Error((key?message.split(key).join('[redacted]'):message).replace(/Bearer\s+\S+/gi,'Bearer [redacted]'));
   }
   let d,item;
   try{
     try{ d=JSON.parse(txt); }
     catch{ throw new Error(tt('img.abnormal',{t:'HTTP '+r.status+'; response is not JSON; Request ID: '+(r.requestId||'unavailable')})); }
-    item=nativeGemini ? geminiImageResult(d,{requestId:r.requestId,locale:window.GAL_I18N?.lang}) : (d?.data?.[0] || d?.images?.[0]);
+    item=imageResultItem(d)||(nativeGemini ? geminiImageResult(d,{requestId:r.requestId,locale:window.GAL_I18N?.lang}) : null);
   }catch(error){
     // A prior success must not keep advertising this combination as healthy.
     recordImageRoute({...route,references:usedRefs},'blocked');
@@ -6252,13 +6486,17 @@ async function genOaiImage(base,model,key,content,p,refIds,layoutGuide,attempted
     throw error;
   }
   if(!item) throw new Error(tt('img.abnormal',{t:txt.slice(0,200)}));
-  const st = ensureExportState();
   const imageMime=item.mimeType||'image/png';
   const imgSrc = item.url || (`data:${imageMime};base64,`+item.b64_json);
-  const exportImgSrc = item.b64_json ? `data:${imageMime};base64,${item.b64_json}` : imgSrc;
+  let exportImgSrc = item.b64_json ? `data:${imageMime};base64,${item.b64_json}` : imgSrc;
+  let sourceReadError=null;
+  if(p==='nonelinear' && !item.b64_json){
+    try{ exportImgSrc=await readBitmapSource(exportImgSrc,{provider:p,base:route.base,key},fileToDataURI); }
+    catch(error){ sourceReadError=error; }
+  }
   const actualImage=await loadImage(exportImgSrc);
   const actualWidth=actualImage.naturalWidth||actualImage.width, actualHeight=actualImage.naturalHeight||actualImage.height;
-  if(!verifyImageRatio(actualWidth,actualHeight,ratio)){
+  if(!verifyImageRatio(actualWidth,actualHeight,ratio)&&!step3NativePixelsMatch(model,ratio,actualWidth,actualHeight)){
     recordImageRoute({...route,references:usedRefs},'blocked');
     throw new Error(tt('img.ratioMismatch',{ratio,width:actualWidth,height:actualHeight}));
   }
@@ -6267,32 +6505,23 @@ async function genOaiImage(base,model,key,content,p,refIds,layoutGuide,attempted
     throw new Error(tt('img.resolutionMismatch',{resolution,width:actualWidth,height:actualHeight}));
   }
   recordImageRoute({...route,references:usedRefs},'verified');
-  $('#out').style.display='block';
-  $('#out').innerHTML = `<img data-step3-output="true" src="${esc(imgSrc)}" alt="draft">
-    <div class="dl"><button type="button" class="btn-primary" id="dlImg">${tt('img.download')}</button>
-    <span class="hint">${r.referenceFallback?tt('img.referenceFallback'):usedRefs?tt('img.hintRef',{n:useIds.length}):tt('img.hint')} · ${ratio} · ${actualWidth}×${actualHeight}px · ${esc(model)}${attempted.length>1?' · 已切换已验证备用线路':''}</span></div>`;
-  // Bind the bitmap download as soon as Step 3 has its verified image. Step 4
-  // can take minutes and must never gate or replace this button.
-  $('#dlImg').onclick = async ()=>{
-    try{
-      const response=await fetch(exportImgSrc);
-      if(!response.ok) throw new Error('Image download failed');
-      const blob=await response.blob();
-      const ext=blob.type.includes('webp')?'webp':/jpe?g/.test(blob.type)?'jpg':'png';
-      downloadBlob('figure-forge-draft.'+ext,blob);
-    }catch(e){ window.open(exportImgSrc,'_blank'); }
-  };
+  // Retain a recoverable result even if applying it to the editor later fails.
+  if(r.job)await acknowledgeInfistarImageJob(key,r.job.id);
+  await revisionGallery.addInitial({image:exportImgSrc,width:actualWidth,height:actualHeight,
+    route:{base:route.base,model,p,ratio,resolution}});
+  const st=ensureExportState();
   markStep3Output(exportImgSrc); st.recon = null; st.reconPending = true;
   /* Keep Step 4 visibly pending while the vision API reconstructs the scene.
      Do not expose a raster-wrapped SVG as if it were editable. */
   showEditableExportStep({ svg:'', source:'bitmap', bitmap:exportImgSrc, reconPending:true });
+  const versionJob=revisionGallery.begin();
   /* The Step 3 image is ready immediately; the real vision rebuild continues
      in Step 4 without making the user wait to inspect or download that image. */
   void (async()=>{
   let reconOk = false;
-  try{ reconOk = await runReconstruction(); }
+  try{ if(sourceReadError) throw sourceReadError; reconOk = await runReconstruction(); }
   catch(e){ st.reconError=safeExportError(e); console.warn('automatic editable reconstruction failed', e); }
-  if(reconOk===null)return;
+  if(reconOk===null){st.reconPending=false;revisionGallery.finish(versionJob);return;}
   st.reconPending = false;
   if(!reconOk){
     const reconStatus=$('#reconStatus');
@@ -6307,6 +6536,7 @@ async function genOaiImage(base,model,key,content,p,refIds,layoutGuide,attempted
   } else {
     renderEditableExportCard();
   }
+  revisionGallery.finish(versionJob);
   })();
 }
 

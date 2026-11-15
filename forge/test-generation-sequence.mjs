@@ -20,6 +20,8 @@ test('SVG then bitmap keeps selected references and passes fresh two-stage analy
   const analysis={repIds:['a','b','c','d'],imageRefIds:['b','c','d'],
     refinedPrompt:'SVG guide',refinedPromptImage:'bitmap guide'};
   const context={$ ,refs,mode:'svg',passMode:'two',
+    revisionGallery:{ready:Promise.resolve(),canGenerate:()=>true},
+    generationModel:()=>$('#model').value,
     cfg:()=>({proto:'openai'}),cleanKey:s=>s,baseURL:()=> 'https://example.invalid',
     relayBase:()=>'',kindOf:()=> 'image',usesInfistarGemini:()=>true,imageRequestDimensions:()=>{},
     selectImageRoute:()=>{},tt:s=>s,setStep:()=>{},showErr:msg=>assert.fail(msg),

@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Top-Conf Figure Gallery · 顶会论文主图灵感画廊 (ICLR / ICML / NeurIPS / CVPR / ACL / AAAI)</title>
-<meta name="description" content="A searchable gallery of well-designed Figure 1 / teaser figures from ICLR, ICML, NeurIPS, CVPR, ACL and AAAI (2023–2026). 精选六大顶会论文主图，按会议、年份、视觉模式分类浏览。">
+<meta name="description" content="检索六大顶会论文主图。FigureForge 支持单独或混合使用画廊检索图与上传图生成论文主图。成图可直接下载辅助论文投稿，也可高保真复刻并导出为可编辑的 PPTX、SVG、VSDX 和 draw.io 文件。">
 <link rel="canonical" href="https://qwdwqfwq.github.io/topconf-paper-figure-gallery/">
 <meta property="og:title" content="Top-Conf Figure Gallery">
-<meta property="og:description" content="A searchable gallery of well-designed paper Figure 1 / teasers — ICLR · ICML · NeurIPS · CVPR · ACL · AAAI, 2023–2026.">
+<meta property="og:description" content="检索六大顶会论文主图。FigureForge 支持单独或混合使用画廊检索图与上传图生成论文主图。成图可直接下载辅助论文投稿，也可高保真复刻并导出为可编辑的 PPTX、SVG、VSDX 和 draw.io 文件。">
 <meta property="og:url" content="https://qwdwqfwq.github.io/topconf-paper-figure-gallery/">
 <meta property="og:site_name" content="Top-Conf Figure Gallery">
 <meta property="og:type" content="website">
@@ -23,7 +23,7 @@
 <meta property="og:image:alt" content="Top-Conf Figure Gallery — Figure 1 / teaser figures from six top AI conferences, 2023–2026">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Top-Conf Figure Gallery">
-<meta name="twitter:description" content="A searchable gallery of well-designed paper Figure 1 / teasers — ICLR · ICML · NeurIPS · CVPR · ACL · AAAI, 2023–2026.">
+<meta name="twitter:description" content="检索六大顶会论文主图。FigureForge 支持单独或混合使用画廊检索图与上传图生成论文主图。成图可直接下载辅助论文投稿，也可高保真复刻并导出为可编辑的 PPTX、SVG、VSDX 和 draw.io 文件。">
 <meta name="twitter:image" content="https://qwdwqfwq.github.io/topconf-paper-figure-gallery/docs/social-preview.png">
 <meta name="twitter:image:alt" content="Top-Conf Figure Gallery — Figure 1 / teaser figures from six top AI conferences, 2023–2026">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234f46e5'/%3E%3Ccircle cx='36' cy='38' r='10' fill='white'/%3E%3Crect x='28' y='54' width='44' height='7' rx='3.5' fill='%23a5b4fc'/%3E%3Crect x='28' y='67' width='30' height='7' rx='3.5' fill='%23a5b4fc'/%3E%3C/svg%3E">
@@ -38,7 +38,7 @@
       "url": "https://qwdwqfwq.github.io/topconf-paper-figure-gallery/",
       "name": "Top-Conf Figure Gallery",
       "alternateName": "顶会论文主图灵感画廊",
-      "description": "A searchable gallery of well-designed Figure 1 / teaser figures from ICLR, ICML, NeurIPS, CVPR, ACL and AAAI, 2023-2026.",
+      "description": "Search Figure 1 and teaser figures from six top AI conferences. FigureForge can generate paper figures using images found in the gallery, your own uploads, or both. Download the results to support manuscript submission, or recreate figures with high fidelity and export editable PowerPoint (PPTX), SVG, Visio (VSDX), and draw.io files for detailed editing.",
       "inLanguage": ["zh-CN", "en"],
       "isAccessibleForFree": true
     },
@@ -59,6 +59,8 @@
   ]
 }
 </script>
+  <script defer src="assets/analytics.js?v=20261102"></script>
+<link rel="stylesheet" href="assets/support-dialog.css">
 </head>
 <body>
 
@@ -75,6 +77,7 @@
         </div>
       </div>
       <div class="hero-right">
+        <button id="support-author" class="support-trigger" type="button" aria-haspopup="dialog" aria-controls="support-dialog">♡ 支持作者</button>
         <button id="lang-toggle" class="lang-toggle" type="button" title="Switch language">中/EN</button>
         <div class="hero-stats" id="hero-stats">
           <span class="stat-pill"><b id="total-figures">…</b>&nbsp;<span data-i18n="stat.figures">figures</span></span>
@@ -200,5 +203,14 @@
 <script src="assets/i18n_gallery.js"></script>
 <script src="assets/figures.js"></script>
 <script src="assets/app.js?v=20261001"></script>
+<dialog id="support-dialog" class="support-dialog" aria-labelledby="support-heading">
+  <button id="support-close" class="support-close" type="button" aria-label="关闭支持作者弹窗">×</button>
+  <h2 id="support-heading">请作者喝杯咖啡 ☕</h2>
+  <p>如果这个画廊帮你找到了论文配图灵感，欢迎随意支持，帮助我持续整理主图、更新数据和维护工具。</p>
+  <a href="assets/wechat-pay.jpg" target="_blank" rel="noopener" aria-label="查看微信收款码原图"><img src="assets/wechat-pay.jpg" alt="作者提供的微信收款码" width="1308" height="1781" loading="lazy"></a>
+  <p class="support-links"><a href="assets/wechat-pay.jpg" download="画廊作者-微信收款码.jpg">保存收款码</a> · <a href="support.html">打开支持页面 ↗</a></p>
+  <p class="support-thanks">打赏完全自愿，金额随意。<br>感谢你的支持，Star、分享和反馈也同样重要。</p>
+</dialog>
+<script src="assets/support-dialog.js"></script>
 </body>
 </html>

@@ -45,7 +45,8 @@ const server=http.createServer((req,res)=>{
       const req=route.request();requests.push({url:req.url(),headers:req.headers(),body:req.method()==='POST'?req.postDataJSON():null});
       if(req.url().endsWith('/models'))return route.fulfill({status:modelsAvailable?200:404,json:modelsAvailable?{data:[{id:'account-parser'},{id:'gpt-image-2'}]}:{error:'No catalog'}});
       if(req.postDataJSON()?.stream){
-        const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900"><rect x="10" y="10" width="300" height="100" fill="#ddd"/></svg>';
+        let svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900"><rect x="10" y="10" width="300" height="100" fill="#ddd"/></svg>';
+        if(req.postDataJSON().max_tokens===32000) svg=svg.replace('x="10"','x="30"');
         return route.fulfill({contentType:'text/event-stream',body:'data: '+JSON.stringify({choices:[{index:0,delta:{content:svg},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n'});
       }
       const content={selectedSections:[{section:'Method',summary:'Fixture method.'}],representative:[1,2],refinedPrompt:'A structured framework.',nodes:[{id:'box',type:'rect',x:10,y:10,w:40,h:40,fill:'#ffffff'}]};
@@ -71,7 +72,20 @@ const server=http.createServer((req,res)=>{
     assert.equal(lastPost().body.stream,true);
     assert.equal(lastPost().body.model,'my-painter');
     assert.equal(lastPost().body.messages[1].content.filter(p=>p.type==='image_url').length,4);
-    assert.equal(await page.locator('#out iframe').count(),1);
+    await page.waitForSelector('#out .ff-version img');
+    assert.equal(await page.locator('#out .ff-version img').count(),1);
+    // The new version editor must preserve arbitrary custom aliases and streaming.
+    await page.locator('#out .ff-version [data-modify]').first().click();
+    await page.locator('.ff-revision-editor textarea').fill('Move the box to the right');
+    await page.locator('.ff-revision-editor [data-submit]').click();
+    await page.waitForFunction(()=>document.querySelector('[data-revision-accept]')||document.querySelector('.ff-revision-error')?.textContent);
+    assert.equal(await page.locator('.ff-revision-error').textContent(),'');
+    await page.locator('[data-revision-accept]').click();
+    await page.waitForFunction(()=>document.querySelectorAll('#out .ff-version img').length===2);
+    assert.equal(lastPost().body.stream,true);
+    assert.equal(lastPost().body.model,'my-painter');
+    assert.equal(lastPost().body.max_tokens,32000);
+    assert.equal(lastPost().body.messages[0].content.filter(p=>p.type==='image_url').length,1);
     await page.evaluate(()=>window.__customTest.repair('<svg/>',[{detail:'Move one label',fix:'Shift right'}],{base:window.__customTest.base(),model:window.__customTest.model(),key:'fixture-key',provider:'custom'}));
     assert.equal(lastPost().body.stream,true);
     assert.equal(lastPost().body.max_tokens,96000);
@@ -100,7 +114,8 @@ const server=http.createServer((req,res)=>{
     });
     await page.evaluate(()=>window.__customTest.image(window.__customTest.base(),window.__customTest.model(),'fixture-key','Draw the method','custom',[],''));
     assert.equal(lastPost().body.model,'my-painter');
-    assert.equal(await page.locator('#dlImg').isEnabled(),true);
+    await page.waitForFunction(()=>document.querySelectorAll('#out .ff-version img').length===3);
+    assert.ok((await page.locator('#out .ff-version img').last().getAttribute('src')).startsWith('data:image/'));
     modelsAvailable=true;
     await page.click('#refreshModels');
     await page.waitForFunction(()=>[...document.querySelector('#parseModel').options].some(o=>o.value==='account-parser'));
