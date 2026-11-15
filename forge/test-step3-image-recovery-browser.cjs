@@ -37,11 +37,16 @@ const {chromium}=require(process.env.REVISION_PLAYWRIGHT||'C:/Users/黎枭/.cach
   assert.equal(await page.evaluate(()=>window.__recoveryTest()),'EDITOR_BOUNDARY_SENTINEL');
   assert.equal(puts,1);assert.equal(posts,0);
   assert.equal(await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('figureforge:infistar-image-job:v1:')&&k.endsWith(':saved')).length),1);
+  // Model a received result whose original transfer/editor step did not finish.
+  await page.evaluate(()=>{const key=Object.keys(localStorage).find(k=>k.startsWith('figureforge:infistar-image-job:v1:')&&k.endsWith(':saved'));const record=JSON.parse(localStorage.getItem(key));delete record.saved;localStorage.setItem(key.slice(0,-6),JSON.stringify(record));});
   await page.reload();await page.locator('#infistarJobRecovery').waitFor();await page.locator('#key').fill('offline-recovery-key');
+  await page.evaluate(()=>{const error=document.querySelector('#genErr');error.hidden=false;error.textContent='Previous image transfer interrupted';});
   await page.getByRole('button',{name:'取回上次图片',exact:true}).click();
   await page.locator('#infistarJobRecovery a[download]').waitFor();
   const size=await page.locator('#infistarJobRecovery img').evaluate(async img=>{await img.decode();return [img.naturalWidth,img.naturalHeight];});
   assert.deepEqual(size,[1280,720]);assert.equal(puts,1);assert.equal(posts,0);assert.ok(gets>=3);
+  assert.equal(await page.locator('#genErr').isVisible(),false);
+  assert.equal(await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('figureforge:infistar-image-job:v1:')&&!k.endsWith(':saved')).length),0);
   console.log('PASS browser: valid image survives editor failure and refresh; original task recovered; no second submission or Step 4 execution');
  }finally{if(browser)await browser.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e);process.exitCode=1;});

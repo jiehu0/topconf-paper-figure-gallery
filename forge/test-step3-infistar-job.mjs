@@ -38,6 +38,30 @@ test('all supported providers use durable jobs; arbitrary hosts remain excluded'
  for(const url of ['https://evil.test/v1/images/generations','http://infistar.cc/v1/images/generations','https://infistar.cc/v1/images/edits'])assert.equal(usesInfistarImageJob(url,input.body.model),false);
  for(const url of ['https://infistar.cc/v1beta/models/gemini-3.1-flash-lite-image:generateContent','https://api.openai.com/v1/images/edits','https://api.nonelinear.com.cn/v1/images/generations'])assert.equal(usesInfistarImageJob(url),true);
 });
+test('a saved image can download longer than a status poll deadline',async t=>{
+ const original=AbortSignal.timeout;
+ AbortSignal.timeout=ms=>original(Math.max(1,Math.round(ms/3000)));
+ t.after(()=>{AbortSignal.timeout=original;});
+ const fetchImpl=async(url,init)=>{
+  if(!url.endsWith('/result'))return reply({state:'succeeded'},202);
+  return new Response(new ReadableStream({start(controller){
+   const abort=()=>{clearTimeout(timer);controller.error(new DOMException('Interrupted','AbortError'));};
+   const timer=setTimeout(()=>{init.signal.removeEventListener('abort',abort);controller.enqueue(new TextEncoder().encode(JSON.stringify({ok:true,text:'saved-image',status:200})));controller.close();},15);
+   init.signal.addEventListener('abort',abort,{once:true});
+  }}));
+ };
+ const c=createInfistarJobClient({...options,storage:memory(),fetchImpl});
+ assert.equal((await c.request(input)).text,'saved-image');
+});
+test('interrupted result retrieval reports the saved image and never submits again',async()=>{
+ let puts=0;
+ const c=createInfistarJobClient({...options,deadlineMs:20,storage:memory(),wait:()=>new Promise(r=>setTimeout(r,2)),fetchImpl:async(url,init)=>{
+  if(init.method==='PUT')puts++;
+  if(url.endsWith('/result'))throw new TypeError('Connection interrupted');
+  return reply({state:'succeeded'},202);
+ }});
+ await assert.rejects(c.request(input),{code:'JOB_RESULT_TRANSFER'});assert.equal(puts,1);
+});
 test('editor acknowledgement keeps a recoverable result without blocking the next generation',async()=>{
  const c=createInfistarJobClient({...options,storage:memory(),fetchImpl:async(url)=>reply(url.endsWith('/result')?{ok:true,text:'saved',status:200}:{state:'succeeded'})});
  const first=await c.request(input);await c.acknowledge(input.key,first.job.id);

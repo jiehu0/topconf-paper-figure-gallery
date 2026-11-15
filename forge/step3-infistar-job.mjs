@@ -25,6 +25,7 @@ export function usesInfistarImageJob(url){return !!imageJobRoute(url);}
 function jobError(code,id){
   const messages={JOB_PENDING_DIFFERENT_INPUT:'上次生图任务尚未取回，已阻止新建任务以避免重复扣费。请先点击“取回上次图片”。',JOB_RESULT_UNKNOWN:'后台未能确认上游任务结果，已停止自动提交，避免重复扣费。请凭任务编号核查，不要直接重新生图。',JOB_EXPIRED:'此任务的图片保存期已结束（24 小时）。旧任务不会被重新提交。',JOB_CONNECTION:'任务记录已保留。连接恢复后点击“取回上次图片”，或保持原参数再次生成，将查询同一任务，不会重新生图。',JOB_STORAGE:'无法保存任务记录，已停止提交。请允许此站点使用本地存储。'};
   messages.JOB_BACKEND_CHANGED='这条任务属于更新前的后台，已阻止向新后台重新提交。请先核查原任务结果，避免重复生图。';
+  messages.JOB_RESULT_TRANSFER='图片已在后台生成并保存，但取回连接中断。请点击“取回上次图片”，不会重新生图。';
   return Object.assign(new Error((messages[code]||code)+(id?' [task: '+id+']':'')),{code,jobId:id});
 }
 export function createInfistarJobClient({fetchImpl=globalThis.fetch.bind(globalThis),storage=globalThis.localStorage,endpoint=INFISTAR_JOBS,wait=sleep,pollMs=1500,deadlineMs=15*60*1000,withLock=async(name,fn)=>{
@@ -35,11 +36,13 @@ export function createInfistarJobClient({fetchImpl=globalThis.fetch.bind(globalT
   function read(name){try{return JSON.parse(storage.getItem(name)||'null');}catch{throw jobError('JOB_STORAGE');}}
   function save(name,value){try{storage.setItem(name,JSON.stringify(value));if(storage.getItem(name)!==JSON.stringify(value))throw Error();}catch{throw jobError('JOB_STORAGE');}}
   async function http(path,key,init={}){
-    const response=await fetchImpl(endpoint+path,{...init,headers:{Authorization:'Bearer '+key,...init.headers},signal:AbortSignal.timeout(15000),cache:'no-store'});
+    // Status polls are small; a multi-megabyte image needs a separate deadline.
+    const timeout=path.endsWith('/result')?120000:15000;
+    const response=await fetchImpl(endpoint+path,{...init,headers:{Authorization:'Bearer '+key,...init.headers},signal:AbortSignal.timeout(timeout),cache:'no-store'});
     const data=await response.json();return {status:response.status,data};
   }
   async function track(record,key,{submission,onProgress=()=>{}}={}){
-    const start=Date.now();let acknowledged=record.acknowledged,failures=0;
+    const start=Date.now();let acknowledged=record.acknowledged,failures=0,resultReady=false;
     while(Date.now()-start<deadlineMs){
       try{
         let response;
@@ -59,6 +62,7 @@ export function createInfistarJobClient({fetchImpl=globalThis.fetch.bind(globalT
         const state=response.data.state;onProgress({id:record.id,state,failures});
         if(state==='unknown')throw jobError('JOB_RESULT_UNKNOWN',record.id);
         if(state==='succeeded'||state==='rejected'){
+          resultReady=state==='succeeded';
           const result=await http('/jobs/'+record.id+'/result',key);
           if(result.status!==200)throw Error('Result not yet available');
           return {...result.data,job:{id:record.id,recovered:!submission||record.recovered}};
@@ -70,7 +74,7 @@ export function createInfistarJobClient({fetchImpl=globalThis.fetch.bind(globalT
         failures++;onProgress({id:record.id,state:'reconnecting',failures});await wait(Math.min(10000,pollMs*2**Math.min(failures,3)));
       }
     }
-    throw jobError('JOB_CONNECTION',record.id);
+    throw jobError(resultReady?'JOB_RESULT_TRANSFER':'JOB_CONNECTION',record.id);
   }
   return {
     async request({url,body,key,usedReferences=false,onProgress}){
@@ -112,12 +116,20 @@ function installRecovery(){
     try{
       const key=(document.querySelector('#key')?.value||'').trim().replace(/^Bearer\s+/i,'');
       if(!key)throw Error('请先填写原 API Key。');
+      const pendingRecord=await client().pending(key);
       const result=await client().recover({key,onProgress:({id,state})=>{note.textContent=`任务 ${id}：${state==='reconnecting'?'正在恢复查询连接':state==='running'?'后台正在生图':state==='queued'?'已排队':'正在取回'}。不会重复提交。`;}});
       if(!result.ok)throw Object.assign(Error('该任务被拒绝（HTTP '+result.status+'）。请核查任务记录后再决定是否重新生成。'),{code:'JOB_REJECTED',jobId:result.job.id});
       const data=JSON.parse(result.text),item=imageResultItem(data);
       const src=item?.b64_json?'data:'+(item.mimeType||'image/png')+';base64,'+item.b64_json:item?.url;
       if(!src||(!src.startsWith('data:image/')&&!/^https:\/\//.test(src)))throw Error('任务未包含可取回的图片。');
       const img=document.createElement('img');img.src=src;img.style.cssText='display:block;max-width:100%;margin:12px 0';
+      await img.decode();
+      // Keep the result in :saved, and unblock the next task only after the
+      // recovered image has actually decoded. Failed transfers retain pending.
+      await client().acknowledge(key,result.job.id);
+      if(pendingRecord?.id===result.job.id&&!document.querySelector('#genBtn')?.disabled){
+        const error=document.querySelector('#genErr');if(error){error.hidden=true;error.textContent='';}
+      }
       const link=document.createElement('a');link.href=src;link.download='recovered-image.'+({'image/jpeg':'jpg','image/webp':'webp'}[item.mimeType]||'png');link.textContent='下载已生成图片';link.target='_blank';link.rel='noopener';
       const clear=document.createElement('button');clear.type='button';clear.textContent='已保存图片，清除此任务记录';clear.onclick=async()=>{await client().forget(key,result.job.id);panel.remove();};
       note.textContent='已取回原任务图片。下载后也可使用下方“上传自己的图片进行修改”继续编辑。';panel.append(img,link,clear);recover.remove();
